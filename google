@@ -1,0 +1,147 @@
+#!/usr/bin/python
+import json
+import socket
+import urllib
+import urllib2
+import oauth
+import oauth2
+
+
+def returnGoogleResult(searchfor):
+  jsonGoogle = []
+  data = {}
+  data["q"] = searchfor
+  data["key"] = "AIzaSyDkGfh9ORdwdSOO6jUKFjo6rJ1kSedOlw8"
+  data["cx"] = "017576662512468239146:omuauf_lfve"
+  url_values = urllib.urlencode(data)
+  url = 'https://www.googleapis.com/customsearch/v1'
+  finalurl= url + "?" + url_values
+  print finalurl
+  try:
+      search_response = urllib2.urlopen(finalurl, None, 1) #timeout after 1 sec
+      search_results = search_response.read()
+      results = json.loads(search_results)
+      data = results['items']
+      count=0
+      for each in data:
+        # print each
+        eachObj={'img_url':"",'text':""}
+        eachObj['img_url']=each['link']
+        eachObj['text']=each['title']
+        jsonGoogle.append(eachObj)
+        count=count+1
+        if(count>=5):
+          break
+      return jsonGoogle
+  except urllib2.URLError, e:
+        print "Oops"
+        return jsonGoogle
+  except socket.timeout, e:
+        print 'Oops, timed out for google'
+        return jsonGoogle
+
+#   print 'Total results: %s' % data['cursor']['estimatedResultCount']
+#   hits = data['results']
+#   print 'Top %d hits:' % len(hits)
+#   for h in hits: print ' ', h['url']
+#   print 'For more results, see %s' % data['cursor']['moreResultsUrl']
+#
+
+
+def returnDuckDuckGoResult(searchfor):
+  jsonDuck = []
+  data = {}
+  data["q"] = searchfor
+  data["format"] = "json"
+  url_values = urllib.urlencode(data)
+  url = 'http://api.duckduckgo.com'
+  finalurl= url + "?" + url_values
+  print finalurl
+
+  try:
+      search_response = urllib2.urlopen(finalurl, None, 1) #timeout after 1 sec
+      search_results = search_response.read()
+      results = json.loads(search_results)
+      data = results['RelatedTopics']
+      # jsonData=json.loads(data)
+      count=0
+      for each in data:
+
+        eachObj={'img_url':"",'text':""}
+
+        try:
+
+          eachObj['img_url']=each['FirstURL']
+          eachObj['text']=each['Text']
+          print each
+          count = count + 1
+        except:
+          continue
+        jsonDuck .append(eachObj)
+        if(count>=5):
+          break
+      # return json.dumps(jsonDuck )
+      return jsonDuck
+  except urllib2.URLError, e:
+        print "Oops?"
+        return jsonDuck
+  except socket.timeout, e:
+        print 'Oops, timed out for duck duck'
+        return jsonDuck
+
+# print returnDuckDuckGoResult('dog')
+
+
+
+
+
+def oauth_req(url):
+    consumer = oauth2.Consumer(key='cZTWIoaOZkMbaetbuNSS7QcXs', secret='HjmpyOn2FuaOp3sNgAU1kon7O2aEBYDRboxbdOHy6oxxB9RIrX')
+    token = oauth2.Token(key= '2262933426-2YIsJGb2bSXCyUbJ2dl4LHtnzMOYM5OTHO2F3xV', secret='kZI9DIFLd53kNA28fb7jN5DhyeUPgELfTZC5DtXOIm2lE')
+    client = oauth2.Client(consumer, token)
+
+    resp, content = client.request(
+    url,
+    method="GET"
+    )
+    return content
+
+def returnTwitterResult(query):
+  searchResults = oauth_req('https://api.twitter.com/1.1/search/tweets.json?src=typd&q='+query)
+  # print searchResults
+  jsonTwitter = []
+  results = json.loads(searchResults)
+  data = results['statuses']
+  # jsonData=json.loads(data)
+  count = 0
+  for each in data:
+    # print each
+    eachObj = {'img_url': "", 'text': ""}
+    eachObj['img_url'] = each['source']
+    eachObj['text'] = each['text']
+    jsonTwitter.append(eachObj)
+    count = count + 1
+    if (count >= 5):
+      break
+
+  return jsonTwitter
+
+
+def combined(keyword):
+  result={'results':'','query':keyword}
+  queries={'google':[],'twitter':[],'duckduckgo':[]}
+  queries['google']=returnGoogleResult(keyword)
+  queries['twitter']=returnTwitterResult(keyword)
+  queries['duckduckgo']=returnDuckDuckGoResult(keyword)
+  result['results']=queries
+
+  return json.dumps(result)
+
+print combined("dog")
+# print returnTwitterResult('dog')
+
+
+
+
+
+
