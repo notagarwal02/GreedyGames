@@ -1,8 +1,7 @@
-// 20 Feb 2018.
-// 6000
 #include "CurrencyBseNse.h"
 #include <api2Exceptions.h>
 #include <time.h>
+
 
 CurrencyBseNse::CurrencyBseNse(API2::StrategyParameters *params):API2::SGContext(params,"NSEvsBSECurrencyUtrade1.0MTBT"), _tradeInstrument1(NULL), _tradeInstrument2(NULL)
 {
@@ -13,9 +12,9 @@ CurrencyBseNse::CurrencyBseNse(API2::StrategyParameters *params):API2::SGContext
 	try{
         if(!setParameters(frontendParams))
 		{
-            reqAddStrategyComment(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
-            DEBUG_FLUSH(reqQryDebugLog());
-            reqTerminateStrategy();
+	        reqAddStrategyComment(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
+	        DEBUG_FLUSH(reqQryDebugLog());
+	        reqTerminateStrategy();
 		}
     }
 	catch(API2::MarketDataSubscriptionFailedException &e)
@@ -28,7 +27,7 @@ CurrencyBseNse::CurrencyBseNse(API2::StrategyParameters *params):API2::SGContext
 
     catch(API2::InstrumentNotFoundException &e)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(),"Instrument Not Found");
+        DEBUG_MESSAGE(reqQryDebugLog(),"Exception in Instrument");           
         reqAddStrategyComment(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
         DEBUG_FLUSH(reqQryDebugLog());
         reqTerminateStrategy();
@@ -36,12 +35,12 @@ CurrencyBseNse::CurrencyBseNse(API2::StrategyParameters *params):API2::SGContext
     }
     catch(std::exception &e)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(),"standard exception raised");
+        DEBUG_MESSAGE(reqQryDebugLog(),"Default Exception Raised");            
         reqAddStrategyComment(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
         DEBUG_FLUSH(reqQryDebugLog());
         reqTerminateStrategy();
         return;
-    }
+    }    
 
     if(ParamError == 1)
     {       
@@ -54,29 +53,37 @@ CurrencyBseNse::CurrencyBseNse(API2::StrategyParameters *params):API2::SGContext
 
     if(_NseTradeInstr == NULL || _BseTradeInstr == NULL)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(),"_NseTradeInstr == NULL || _BseTradeInstr == NULL");
+        DEBUG_MESSAGE(reqQryDebugLog(),"Either Instrument Is Null");               
         reqAddStrategyComment(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
         DEBUG_FLUSH(reqQryDebugLog());
         reqTerminateStrategy();
         return;
     }
     else
-    {
-        _algoIdSet.insert( _NseTradeInstr->getStaticData()->marketId);
-        _algoIdSet.insert( _BseTradeInstr->getStaticData()->marketId);
-        readConfForAlgoid("SAMPLE-ALGO","NseBseSample.conf");               // create file in config folder
+    {                
+        _algoIdSet.insert( _NseTradeInstr->getStaticData()->marketId);                
+        _algoIdSet.insert( _BseTradeInstr->getStaticData()->marketId);                
+        readConfForAlgoid("SAMPLE-ALGO","NseBseSample.conf");               // create file in config folder                
     }
 
     if( !validateAlgoDetail() )
     {
-        DEBUG_MESSAGE(reqQryDebugLog(),"Invalid Algo Id " );
+        DEBUG_MESSAGE(reqQryDebugLog(),"Not a Valid Algo Id" );
         reqAddStrategyComment(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
         DEBUG_FLUSH(reqQryDebugLog());
         reqTerminateStrategy();
         return ;
     }
 
-   // reqTimerEvent(5000000);     // 5 seconds
+    pBuyPriceNse = 0;
+    pSellPriceNse = 0;
+    pBuyPriceNse1 = 0;
+    pSellPriceNse1 = 0;
+    pBuySizeSize = 0;
+    pSellSizeSize = 0;
+    pBuySizeSize1 = 0;
+    pSellSizeSize1 = 0;
+    prevCount = 0;
 }
 
 CurrencyBseNse::~CurrencyBseNse()
@@ -86,18 +93,18 @@ CurrencyBseNse::~CurrencyBseNse()
 int CurrencyBseNse::FindMinimumSize(API2::DATA_TYPES::QTY Size1,API2::DATA_TYPES::QTY Size2)
 {
     if(Size1 > Size2){
-        MinSize = Size2;
-    }
+    	MinSize = Size2;
+    }										
     else{
-        MinSize = Size1;
+    	MinSize = Size1;
     }
-
+    
     if(MinSize <= 1){
-        MinSize = 1;
+        MinSize = 1;   
     }
 
     return MinSize;
-} 	// end of FindMinimumSize();
+} 	
 
 
 void CurrencyBseNse::Update_Buy_Position(API2::DATA_TYPES::QTY Qty)
@@ -107,15 +114,15 @@ void CurrencyBseNse::Update_Buy_Position(API2::DATA_TYPES::QTY Qty)
     std::string z;
     int _rowId = 0;
     str2 << Qty;
-    str1 << "TotalBuyTraded:" << str2.str();
+    str1 << "TotalBuyTraded:" << str2.str();       
 
     list1.push_back(str1.str());
     if(!reqQrySendCustomResponse(z,list1,_rowId))
     {
-        // DEBUG_MESSAGE(reqQryDebugLog(),"CustomResponseFailed");
-        DEBUG_FLUSH(reqQryDebugLog());
-        reqTerminateStrategy(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
-        return;
+    	DEBUG_MESSAGE(reqQryDebugLog(),"CustomResponseFailed");
+	    DEBUG_FLUSH(reqQryDebugLog());
+	    reqTerminateStrategy(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
+	    return;
     }
 }
 
@@ -126,15 +133,15 @@ void CurrencyBseNse::Update_Sell_Position(API2::DATA_TYPES::QTY Qty)
     std::string z;
     int _rowId = 0;
     str2 << Qty;
-    str1 << "TotalSellTraded:" << str2.str();
+    str1 << "TotalSellTraded:" << str2.str();       
 
     list1.push_back(str1.str());
     if(!reqQrySendCustomResponse(z,list1,_rowId))
     {
-        DEBUG_MESSAGE(reqQryDebugLog(),"CustomResponseFailed");
-        DEBUG_FLUSH(reqQryDebugLog());
-        reqTerminateStrategy(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
-        return;
+	    DEBUG_MESSAGE(reqQryDebugLog(),"CustomResponseFailed");
+	    DEBUG_FLUSH(reqQryDebugLog());
+	    reqTerminateStrategy(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
+	    return;
     }
 }
 
@@ -146,13 +153,14 @@ void CurrencyBseNse::Update_Text(API2::DATA_TYPES::QTY Q1)
     int _rowId = 0;
 
     str1 << "IsBidding:" << "No";
+
     list1.push_back(str1.str());
     if(!reqQrySendCustomResponse(z,list1,_rowId))
     {
-        DEBUG_MESSAGE(reqQryDebugLog(),"CustomResponseFailed");
-        DEBUG_FLUSH(reqQryDebugLog());
-        reqTerminateStrategy(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
-        return;
+	    DEBUG_MESSAGE(reqQryDebugLog(),"CustomResponseFailed");
+	    DEBUG_FLUSH(reqQryDebugLog());
+	    reqTerminateStrategy(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
+	    return;
     }
 }
 
@@ -164,37 +172,37 @@ void CurrencyBseNse::Update_Status(API2::DATA_TYPES::String Str11)
     int _rowId = 0;
 
     str1 << "IsBidding:" << Str11;
-    list1.push_back(str1.str());
 
+    list1.push_back(str1.str());
     if(!reqQrySendCustomResponse(z,list1,_rowId))
     {
-        DEBUG_MESSAGE(reqQryDebugLog(),"CustomResponseFailed");
-        DEBUG_FLUSH(reqQryDebugLog());
-        reqTerminateStrategy(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
-        return;
+	    DEBUG_MESSAGE(reqQryDebugLog(),"CustomResponseFailed");
+	    DEBUG_FLUSH(reqQryDebugLog());
+	    reqTerminateStrategy(API2::CONSTANTS::RSP_StrategyComment_STRATEGY_ERROR_STATE);
+	    return;
     }
 }
 
 void CurrencyBseNse::onCMDModifyStrategy(API2::AbstractUserParams *newParams)
 {
-    DEBUG_MESSAGE(reqQryDebugLog(), "------------Inside onCMDModifyStrategy");
+    DEBUG_MESSAGE(reqQryDebugLog(), "onCMDModifyStrategy");
     API2::UserParams *params =(API2::UserParams *) newParams;	
 
     if(params->getValue("BuyTotalLot",BuyTotalLot) != API2::UserParamsError_OK || params->getValue("SellTotalLot",SellTotalLot) != API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in BuyTotalLot OR SellTotalLot");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error Either in BuyTotalLot OR SellTotalLot");
         ErrorFlag = 1;
-        Update_Status("issue in BuyTotalLot OR SellTotalLot");
+        Update_Status("Error Either in BuyTotalLot OR SellTotalLot");
         DEBUG_FLUSH(reqQryDebugLog());
         reqTerminateStrategy();
     }
     else
     {
-        if(BuyTotalLot - _TotalBuyTraded > 1000 || SellTotalLot - _TotalSellTraded > 1000)
+        if(BuyTotalLot - _TotalBuyTraded > 2000 || SellTotalLot - _TotalSellTraded > 2000)
         {
-            DEBUG_MESSAGE(reqQryDebugLog(), "Open BuyTotal_Lot OR SellTotal_Lot cant be more than 1000");
+            DEBUG_MESSAGE(reqQryDebugLog(), "Open BuyTotal_Lot or SellTotal_Lot cant be more than 2000");
             ErrorFlag = 1;
-            Update_Status("issue in BuyTotalLot - _TotalBuyTraded OR SellTotalLot - _TotalSellTraded");
+            Update_Status("Error Either in BuyTotalLot - _TotalBuyTraded or SellTotalLot - _TotalSellTraded");
             DEBUG_FLUSH(reqQryDebugLog());
             reqTerminateStrategy();
         }
@@ -208,11 +216,11 @@ void CurrencyBseNse::onCMDModifyStrategy(API2::AbstractUserParams *newParams)
     First_Buy_Traded_Qty = _BseTradeInstr -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
     First_Sell_Traded_Qty = _BseTradeInstr -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
 
-    if(_BuyTotalLot - First_Buy_Traded_Qty > 1000 || _SellTotalLot - First_Sell_Traded_Qty > 1000)
+    if(_BuyTotalLot - First_Buy_Traded_Qty > 2000 || _SellTotalLot - First_Sell_Traded_Qty > 2000)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in _BuyTotalLot / _SellTotalLot excess Quantity");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error Either in _BuyTotalLot / _SellTotalLot excess Quantity");
         ErrorFlag = 1;
-        Update_Status("issue in _BuyTotalLot / _SellTotalLot excess Quantity");
+        Update_Status("Error Either in _BuyTotalLot / _SellTotalLot excess Quantity");
         DEBUG_FLUSH(reqQryDebugLog());
         reqTerminateStrategy();
     }
@@ -220,96 +228,97 @@ void CurrencyBseNse::onCMDModifyStrategy(API2::AbstractUserParams *newParams)
     
     if(params->getValue("MaxOrderLot",MaxOrderLot) != API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in MaxOrderLot");
-        ErrorFlag = 1;
-        Update_Status("issue in MaxOrderLot");
-        DEBUG_FLUSH(reqQryDebugLog());
-        reqTerminateStrategy();
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in MaxOrderLot");
+         ErrorFlag = 1;
+         Update_Status("Error in MaxOrderLot");
+         DEBUG_FLUSH(reqQryDebugLog());
+         reqTerminateStrategy();
     }
     else
     {
-        if(MaxOrderLot > 0 && MaxOrderLot < 50)
-        {
-            _MaxOrderLot = MaxOrderLot;
-        }
-        else
-        {
-            DEBUG_MESSAGE(reqQryDebugLog(), "issue in MaxOrderLot");
-            ErrorFlag = 1;
-            Update_Status("issue in MaxOrderLot");
-            DEBUG_FLUSH(reqQryDebugLog());
-            reqTerminateStrategy();
-        }
+	    if(MaxOrderLot > 0 && MaxOrderLot <= 200)
+	    {
+	         _MaxOrderLot = MaxOrderLot;
+	    }
+	    else
+	    {
+	        DEBUG_MESSAGE(reqQryDebugLog(), "Error in MaxOrderLot");
+	         ErrorFlag = 1;
+	         Update_Status("Error in MaxOrderLot");
+	         DEBUG_FLUSH(reqQryDebugLog());
+	         reqTerminateStrategy();
+	    }
     }
 
     if(params->getValue("BuyDiff",BuyDiff1) != API2::UserParamsError_OK || params->getValue("SellDiff",SellDiff1) != API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in Difference entered into user Parameters.");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error Either in Difference entered into user Parameters.");
         ErrorFlag = 1;
-        Update_Status("issue in Difference entered into user Parameters");
+        Update_Status("Error Either in Difference entered into user Parameters");
         DEBUG_FLUSH(reqQryDebugLog());
         reqTerminateStrategy();
     }
     else
     {
-        if(BuyDiff1 + SellDiff1 < 0)
-        {
-            DEBUG_MESSAGE(reqQryDebugLog(), "Sum of Buy/Sell Difference can't be less than Zero");
-            ErrorFlag = 1;
-            Update_Status("Sum of Buy/Sell Difference can't be less than Zero");
-            DEBUG_FLUSH(reqQryDebugLog());
-            reqTerminateStrategy();
-        }
-        else
-        {
-            if(BuyDiff1 < -100 || SellDiff1 < -100)
-            {
-                DEBUG_MESSAGE(reqQryDebugLog(), "Sum of BuyDiff1 < -0.0100 || SellDiff1 < 0.0100 ");
-                ErrorFlag = 1;
-                Update_Status("Sum of BuyDiff1 < -0.0100 || SellDiff1 < 0.0100 ");
-                DEBUG_FLUSH(reqQryDebugLog());
-                reqTerminateStrategy();
-            }
-            else
-            {
-                _BuyDiff = BuyDiff1;
-                _SellDiff = SellDiff1;
-            }
-        }
+    	if(BuyDiff1 + SellDiff1 < 0)
+    	{
+		    DEBUG_MESSAGE(reqQryDebugLog(), "Sum of Buy/Sell Difference can't be less than Zero");
+		    ErrorFlag = 1;
+		    Update_Status("Sum of Buy/Sell Difference can't be less than Zero");
+		    DEBUG_FLUSH(reqQryDebugLog());
+		    reqTerminateStrategy();
+    	}
+	    else
+	    {
+	        if(BuyDiff1 < -100 || SellDiff1 < -100)
+	        {
+	            DEBUG_MESSAGE(reqQryDebugLog(), "Sum of BuyDiff1 < -0.0100 || SellDiff1 < 0.0100 ");
+	            ErrorFlag = 1;
+	            Update_Status("Sum of BuyDiff1 < -0.0100 || SellDiff1 < 0.0100 ");
+	            DEBUG_FLUSH(reqQryDebugLog());
+	            reqTerminateStrategy();
+	        }
+	        else
+	        {
+	            _BuyDiff = BuyDiff1;
+	            _SellDiff = SellDiff1;
+	        }
+	    }
     }
 
     if(params->getValue("IsBidding",IsBidding) != API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in IsBidding");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in IsBidding");
         ErrorFlag = 1;
-        Update_Status("issue in IsBidding");
+        Update_Status("Error in IsBidding");
         DEBUG_FLUSH(reqQryDebugLog());
         reqTerminateStrategy();
     }
     else{
-        _IsBidding = IsBidding;
-    }
+    	_IsBidding = IsBidding;
+    }    
+          
 
     if(params->getValue("StopLoss",StopLoss1) != API2::UserParamsError_OK || params->getValue("TriggerPrice",TriggerPrice1) != API2::UserParamsError_OK || params->getValue("Tolerance",Tolerance1) != API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in Stoploss / TriggerPrice / Tolerance  entered into user Parameters.");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in Stoploss / TriggerPrice / Tolerance  entered into user Parameters.");
         ErrorFlag = 1;
-        Update_Status("issue in Stoploss / TriggerPrice / Tolerance  entered into user Parameters.");
+        Update_Status("Error in Stoploss / TriggerPrice / Tolerance  entered into user Parameters");
         DEBUG_FLUSH(reqQryDebugLog());
         reqTerminateStrategy();
     }
     else
     {
-        _StopLoss = StopLoss1;
-        _TriggerPrice = TriggerPrice1;
-        _Tolerance = Tolerance1;
+	    _StopLoss = StopLoss1;
+	    _TriggerPrice = TriggerPrice1;
+	    _Tolerance = Tolerance1;
     }   
 
     if(params->getValue("Depth",Depth) != API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in Depth");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in Depth");
         ErrorFlag = 1;
-        Update_Status("issue in Depth");
+        Update_Status("Error in Depth");
         DEBUG_FLUSH(reqQryDebugLog());
         reqTerminateStrategy();
     }
@@ -320,440 +329,423 @@ void CurrencyBseNse::onCMDModifyStrategy(API2::AbstractUserParams *newParams)
     reqSendStrategyResponse(API2::CONSTANTS::RSP_ResponseType_STRATEGY_RUNNING,API2::CONSTANTS::RSP_RiskStatus_SUCCESS,API2::CONSTANTS::RSP_StrategyComment_USER_INPUT);
 }
 
-void CurrencyBseNse::o_place_order(int BuySell){
+void CurrencyBseNse::onMarketDataEvent(UNSIGNED_LONG symbolId)
+{
+    DEBUG_VARSHOW(reqQryDebugLog(), "Market Data Event",symbolId);
+    //DEBUG_FLUSH(reqQryDebugLog());
+    API2::COMMON::MktData *mktDataNse = reqQryMarketData(_FeedInstrumentNse->getSymbolId());
+
+    if(FeedCount < 5)
+    {
+        FeedCount = FeedCount + 1;
+    }
+
     BuyPriceNse = mktDataNse->getBidPrice(0);
     SellPriceNse = mktDataNse->getAskPrice(0);
     BuyPriceNse1 = mktDataNse->getBidPrice(1);
     SellPriceNse1 = mktDataNse->getAskPrice(1);
+    BuySizeSize = mktDataNse->getBidQty(0);
+    SellSizeSize = mktDataNse->getAskQty(0);
+    BuySizeSize1 = mktDataNse->getBidQty(1);
+    SellSizeSize1 = mktDataNse->getAskQty(1);
 
-    if(FeedCount < 5){
-        FeedCount++;
-    }
+    DEBUG_VARSHOW(reqQryDebugLog(), "buysize ",BuySizeSize);
+    DEBUG_VARSHOW(reqQryDebugLog(), "sellsize ",SellSizeSize);
+    DEBUG_VARSHOW(reqQryDebugLog(), "1buysize ",BuySizeSize1);
+    DEBUG_VARSHOW(reqQryDebugLog(), "1sellsize ",SellSizeSize1);
 
-    if(_IsBidding.compare("Yes") != 0 || BuyPriceNse <= 0 || SellPriceNse <= 0 || BuyPriceNse - BuyPriceNse1 >= 6*TickSize
-            ||  SellPriceNse1 - SellPriceNse >= 6*TickSize || SellPriceNse - BuyPriceNse >= 16*TickSize)
+
+    TickSize = _FeedInstrumentNse->getStaticData()->tickSize;
+    Error = 0;
+
+
+    if(_IsBidding.compare("Yes") != 0 || BuyPriceNse <= 0 || SellPriceNse <= 0 || BuySizeSize <= 0 || SellSizeSize <=0
+       || BuyPriceNse - BuyPriceNse1 >= 6*TickSize ||  SellPriceNse1 - SellPriceNse >= 6*TickSize
+       || SellPriceNse - BuyPriceNse >= 16*TickSize || ErrorFlag == 1)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "Feed Error .... ");
-        return;
-    }
+        //DEBUG_MESSAGE(reqQryDebugLog(), "Feed Error .... ");
+        Error = 1;
+    }  
 
-    if(_Depth == 0)
+    if(_Depth == 0) // first depth
     {
         BuyQuotePrice = BuyPriceNse - _BuyDiff;
         SellQuotePrice = SellPriceNse + _SellDiff;
-        BuySizeSize = mktDataNse->getBidQty(0);
-        SellSizeSize = mktDataNse->getAskQty(0);
         OrderBuySize = FindMinimumSize(BuySizeSize/2, _MaxOrderLot);
         OrderSellSize = FindMinimumSize(SellSizeSize/2, _MaxOrderLot);
     }
-    else if(_Depth == 1)
+
+    if(_Depth == 1) // second depth
     {
         BuyQuotePrice = BuyPriceNse1 - _BuyDiff;
         SellQuotePrice = SellPriceNse1 + _SellDiff;
-        BuySizeSize1 = mktDataNse->getBidQty(1);
-        SellSizeSize1 = mktDataNse->getAskQty(1);
         OrderBuySize = FindMinimumSize(BuySizeSize1/2, _MaxOrderLot);
         OrderSellSize = FindMinimumSize(SellSizeSize1/2, _MaxOrderLot);
     }
 
-    if(BuySell == 1){
-        First_Buy_Pending_Qty = _orderWrapperBuy._instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
-        Second_Sell_Pending_Qty = _FeedInstrumentNse->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeNse;
-        First_Leg_BuyOrder_Price = _orderWrapperBuy._instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_BUY);
+    RemBuyQty = 0;
+    RemSellQty = 0;
 
-        if(BuyQuotePrice - First_Leg_BuyOrder_Price >= 300 && First_Leg_BuyOrder_Price > 0 && BuyPriceNse > 0){
-            BuyQuotePrice = First_Leg_BuyOrder_Price;
-        }
+    First_Buy_Pending_Qty = _orderWrapperBuy._instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
+    First_Sell_Pending_Qty = _orderWrapperSell._instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
+    First_Leg_BuyOrder_Price = _orderWrapperBuy._instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_BUY);
+    First_Leg_SellOrder_Price = _orderWrapperSell._instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_SELL); 
 
-        First_leg_BuyTraded = _BseTradeInstr -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
-        Second_leg_SellTraded = _FeedInstrumentNse -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeNse;
-        RemBuyQty = _BuyTotalLot - First_leg_BuyTraded;
-        OrderBuySize = FindMinimumSize(OrderBuySize, RemBuyQty);
+    DEBUG_VARSHOW(reqQryDebugLog(), " First leg buy pending : ",First_Buy_Pending_Qty);
+    DEBUG_VARSHOW(reqQryDebugLog(), " First leg sell pending : ",First_Sell_Pending_Qty); 
+    DEBUG_VARSHOW(reqQryDebugLog(), " First leg buy price : ",First_Leg_BuyOrder_Price);
+    DEBUG_VARSHOW(reqQryDebugLog(), " First leg sell price : ",First_Leg_SellOrder_Price);  
 
-        if(BuyQuotePrice > 0 && FeedCount > 3 && First_leg_BuyTraded - Second_leg_SellTraded == 0 && First_Buy_Pending_Qty == 0 && Second_Sell_Pending_Qty == 0 && _BuyTotalLot >= First_leg_BuyTraded + OrderBuySize + _TotalBuyTraded)
-        {
-            if(clock_gettime(CLOCK_REALTIME, &start) == -1){
-                perror("clock gettime");
-                exit( EXIT_FAILURE );
-            }
-            _orderWrapperBuy.newOrder(risk, BuyQuotePrice,OrderBuySize*BoardLotSizeBse);
-            if(clock_gettime(CLOCK_REALTIME, &end) == -1){
-                perror("clock gettime");
-                exit( EXIT_FAILURE );
-            }
-            double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
-            DEBUG_VARSHOW(reqQryDebugLog(), "o_place_order:: New Buy Order Send Time: ",diff/1000);
-            OrderIdOrderWrapperSellMap.clear();
-            OrderIdOrderWrapperSellMapSelfTrade.clear();
-            FirstLegBuyTradePrice = 0;
-            FirstLegBuyTradedQty = 0;
-        }
-    }
-    else if(BuySell == 2){
-        First_Sell_Pending_Qty = _orderWrapperSell._instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
-        Second_Buy_Pending_Qty = _FeedInstrumentNse->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeNse;
-        First_Leg_SellOrder_Price = _orderWrapperSell._instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_SELL);
 
-        if(First_Leg_SellOrder_Price - SellQuotePrice >= 300 && First_Leg_SellOrder_Price > 0 && SellPriceNse > 0){
-            SellQuotePrice = First_Leg_SellOrder_Price;
-        }
-
-        First_leg_SellTraded = _BseTradeInstr -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
-        Second_leg_BuyTraded = _FeedInstrumentNse -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeNse;
-        RemSellQty = _SellTotalLot - First_leg_SellTraded;
-        OrderSellSize = FindMinimumSize(OrderSellSize, RemSellQty);
-
-        if(SellQuotePrice > 0 && FeedCount > 3 && Second_leg_BuyTraded - First_leg_SellTraded == 0 && First_Sell_Pending_Qty == 0 && Second_Buy_Pending_Qty == 0 && _SellTotalLot >= First_leg_SellTraded + OrderSellSize + _TotalSellTraded)
-        {
-            if(clock_gettime(CLOCK_REALTIME, &start) == -1){
-                perror("clock gettime");
-                exit( EXIT_FAILURE );
-            }
-            _orderWrapperSell.newOrder(risk,SellQuotePrice,OrderSellSize*BoardLotSizeBse);
-            if(clock_gettime(CLOCK_REALTIME, &end) == -1){
-                perror("clock gettime");
-                exit( EXIT_FAILURE );
-            }
-            double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
-            DEBUG_VARSHOW(reqQryDebugLog(), "o_place_order:: New Sell Order Send Time: ",diff/1000);
-            OrderIdOrderWrapperBuyMap.clear();
-            OrderIdOrderWrapperBuyMapSelfTrade.clear();
-            FirstLegSellTradePrice = 0;
-            FirstLegSellTradedQty = 0;
-        }
-    }
-}
-
-void CurrencyBseNse::o_modify_cancel_order(int BuySell){
-    BuyPriceNse = mktDataNse->getBidPrice(0);
-    SellPriceNse = mktDataNse->getAskPrice(0);
-    BuyPriceNse1 = mktDataNse->getBidPrice(1);
-    SellPriceNse1 = mktDataNse->getAskPrice(1);
-
-    if(FeedCount < 5){
-        FeedCount++;
+    if(BuyQuotePrice - First_Leg_BuyOrder_Price >= 300 && First_Leg_BuyOrder_Price > 0 && BuyPriceNse > 0){
+        BuyQuotePrice = First_Leg_BuyOrder_Price;
     }
 
-    if(_IsBidding.compare("Yes") != 0 || BuyPriceNse <= 0 || SellPriceNse <= 0 || BuyPriceNse - BuyPriceNse1 >= 6*TickSize
-            ||  SellPriceNse1 - SellPriceNse >= 6*TickSize || SellPriceNse - BuyPriceNse >= 16*TickSize)
+    if(First_Leg_SellOrder_Price - SellQuotePrice >= 300 && First_Leg_SellOrder_Price > 0 && SellPriceNse > 0){
+        SellQuotePrice = First_Leg_SellOrder_Price;
+    }
+
+    DEBUG_VARSHOW(reqQryDebugLog(), "Maximum order lot : ",_MaxOrderLot);
+    DEBUG_VARSHOW(reqQryDebugLog(), "Quote for buy : ",BuyQuotePrice);
+    DEBUG_VARSHOW(reqQryDebugLog(), "Quote for sell : ",SellQuotePrice); 
+
+    First_leg_BuyTraded = _BseTradeInstr -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
+    Second_leg_SellTraded = _FeedInstrumentNse -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeNse;
+    Second_Sell_Pending_Qty = _FeedInstrumentNse->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeNse;
+    RemBuyQty = _BuyTotalLot - First_leg_BuyTraded;    
+    OrderBuySize = FindMinimumSize(OrderBuySize, RemBuyQty);
+
+    DEBUG_VARSHOW(reqQryDebugLog(), " Buy Order Size  : ",OrderBuySize); 
+    DEBUG_VARSHOW(reqQryDebugLog(), " Buy Traded  : ",FirstLegBuyTradedQty); 
+
+    if(_orderWrapperBuy._isPendingNew || _orderWrapperBuy._isPendingReplace || _orderWrapperBuy._isPendingCancel)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "Feed Error .... ");
-        if(BuySell == 1){
-            _orderWrapperBuy.cancelOrder(risk);
-        }
-        else if(BuySell == 2){
+        DEBUG_MESSAGE(reqQryDebugLog(), "First leg buy order is in pending state");
+    }
+    else
+    {
+    if(First_Buy_Pending_Qty > 0 && First_Leg_BuyOrder_Price > 0 && !_orderWrapperBuy._isReset)     // order is open
+    {
+            if(Error == 1 || ErrorFlag == 1)
+            {
+                _orderWrapperBuy.cancelOrder(risk);
+                //DEBUG_VARSHOW(reqQryDebugLog(), " First Leg Buy Order cancelled at Price  : ",First_Leg_BuyOrder_Price);
+            }
+            else
+            {                
+                cond = 0;
+
+                    if(cond == 0 && _MaxOrderLot > BuySizeSize)
+                    {
+                        if(First_Leg_BuyOrder_Price != BuyQuotePrice - TickSize && (BuyQuotePrice - TickSize) > 0)
+                        {
+                        	if(clock_gettime(CLOCK_REALTIME, &start) == -1){
+				                perror("clock gettime");
+				                exit( EXIT_FAILURE );
+							}
+                            _orderWrapperBuy.replaceOrder(risk, BuyQuotePrice - TickSize, (OrderBuySize*BoardLotSizeBse) + FirstLegBuyTradedQty);
+                            if(clock_gettime(CLOCK_REALTIME, &end) == -1){
+				                perror("clock gettime");
+				                exit( EXIT_FAILURE );
+							}
+							double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
+							DEBUG_VARSHOW(reqQryDebugLog(), "case 1: Modify buy order send time: ",diff/1000);
+                            cond = 1;
+                            DEBUG_VARSHOW(reqQryDebugLog(), " case 1: Modify buy order at : ",BuyQuotePrice - TickSize);
+                            DEBUG_VARSHOW(reqQryDebugLog(), " case 1: Modify buy order at : ",(OrderBuySize*BoardLotSizeBse) + FirstLegBuyTradedQty);
+                        }
+                    
+                    }
+                    if(cond == 0 && First_Leg_BuyOrder_Price != BuyQuotePrice && BuyQuotePrice > 0)
+                    {
+                    	if(clock_gettime(CLOCK_REALTIME, &start) == -1){
+				                perror("clock gettime");
+				                exit( EXIT_FAILURE );
+						}
+                        _orderWrapperBuy.replaceOrder(risk, BuyQuotePrice, (OrderBuySize*BoardLotSizeBse) + FirstLegBuyTradedQty);
+                        if(clock_gettime(CLOCK_REALTIME, &end) == -1){
+				                perror("clock gettime");
+				                exit( EXIT_FAILURE );
+						}
+						double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
+						DEBUG_VARSHOW(reqQryDebugLog(), "case 2: Modify buy order send time: ",diff/1000);
+                        DEBUG_VARSHOW(reqQryDebugLog(), " case 2: Modify buy order at : ",BuyQuotePrice);
+                        DEBUG_VARSHOW(reqQryDebugLog(), " case 2: Modify buy order at : ",(OrderBuySize*BoardLotSizeBse) + FirstLegBuyTradedQty);
+                        cond = 1;
+                    }
+
+                    if(cond == 0 && First_Buy_Pending_Qty != OrderBuySize){
+                    	if(clock_gettime(CLOCK_REALTIME, &start) == -1){
+				                perror("clock gettime");
+				                exit( EXIT_FAILURE );
+						}
+                    	_orderWrapperBuy.replaceOrder(risk, 0, (OrderBuySize*BoardLotSizeBse) + FirstLegBuyTradedQty);
+                        if(clock_gettime(CLOCK_REALTIME, &end) == -1){
+				                perror("clock gettime");
+				                exit( EXIT_FAILURE );
+						}
+						double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
+						DEBUG_VARSHOW(reqQryDebugLog(), "case 3: Modify buy order send time: ",diff/1000);
+                        DEBUG_VARSHOW(reqQryDebugLog(), "case 3: Modify buy order at : ",(OrderBuySize*BoardLotSizeBse) + FirstLegBuyTradedQty);
+                        cond = 1;
+                    }
+            }
+    }    
+
+    if(_orderWrapperBuy._isReset && Error == 0)		// 1 when no order
+    {    
+    if(BuyQuotePrice > 0 && FeedCount > 3 && First_leg_BuyTraded - Second_leg_SellTraded == 0 && First_Buy_Pending_Qty == 0 && Second_Sell_Pending_Qty == 0 && _BuyTotalLot >= First_leg_BuyTraded + OrderBuySize + _TotalBuyTraded)
+    {
+    	if(clock_gettime(CLOCK_REALTIME, &start) == -1){
+                perror("clock gettime");
+                exit( EXIT_FAILURE );
+		}
+        _orderWrapperBuy.newOrder(risk, BuyQuotePrice,OrderBuySize*BoardLotSizeBse);
+        if(clock_gettime(CLOCK_REALTIME, &end) == -1){
+                perror("clock gettime");
+                exit( EXIT_FAILURE );
+		}
+		double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
+		DEBUG_VARSHOW(reqQryDebugLog(), "New Buy Order send time: ",diff/1000);
+        DEBUG_VARSHOW(reqQryDebugLog(), " New Buy Order placed at : ",BuyQuotePrice);
+        DEBUG_VARSHOW(reqQryDebugLog(), " New Buy Order placed at : ",OrderBuySize*BoardLotSizeBse);
+        OrderIdOrderWrapperSellMap.clear();
+        OrderIdOrderWrapperSellMapSelfTrade.clear();
+        FirstLegBuyTradePrice = 0;
+        FirstLegBuyTradedQty = 0;
+    }
+    }
+    }
+
+    First_leg_SellTraded = _BseTradeInstr -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
+    Second_leg_BuyTraded = _FeedInstrumentNse -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeNse;
+    Second_Buy_Pending_Qty = _FeedInstrumentNse->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeNse;
+    RemSellQty = _SellTotalLot - First_leg_SellTraded;    
+    OrderSellSize = FindMinimumSize(OrderSellSize, RemSellQty);  
+    DEBUG_VARSHOW(reqQryDebugLog(), " Sell Order Size  : ",OrderSellSize); 
+    DEBUG_VARSHOW(reqQryDebugLog(), " Sell Traded  : ",FirstLegSellTradedQty); 
+
+    if(_orderWrapperSell._isPendingNew || _orderWrapperSell._isPendingReplace || _orderWrapperSell._isPendingCancel)
+    {
+    	DEBUG_MESSAGE(reqQryDebugLog(), "First leg sell order is in pending state");
+    }
+    else
+    {
+    if(First_Sell_Pending_Qty > 0 && First_Leg_SellOrder_Price > 0 && !_orderWrapperSell._isReset)
+    {
+
+        if(Error == 1 || ErrorFlag == 1)
+        {
             _orderWrapperSell.cancelOrder(risk);
+            //DEBUG_VARSHOW(reqQryDebugLog(), " First Leg Sell Order cancelled at Price  : ",First_Leg_SellOrder_Price);
         }
-        return;
-    }
-
-    if(_Depth == 0)
-    {
-        BuyQuotePrice = BuyPriceNse - _BuyDiff;
-        SellQuotePrice = SellPriceNse + _SellDiff;
-        BuySizeSize = mktDataNse->getBidQty(0);
-        SellSizeSize = mktDataNse->getAskQty(0);
-        OrderBuySize = FindMinimumSize(BuySizeSize/2, _MaxOrderLot);
-        OrderSellSize = FindMinimumSize(SellSizeSize/2, _MaxOrderLot);
-    }
-    else if(_Depth == 1)
-    {
-        BuyQuotePrice = BuyPriceNse1 - _BuyDiff;
-        SellQuotePrice = SellPriceNse1 + _SellDiff;
-        BuySizeSize1 = mktDataNse->getBidQty(1);
-        SellSizeSize1 = mktDataNse->getAskQty(1);
-        OrderBuySize = FindMinimumSize(BuySizeSize1/2, _MaxOrderLot);
-        OrderSellSize = FindMinimumSize(SellSizeSize1/2, _MaxOrderLot);
-    }
-
-    if(BuySell == 1){
-        First_Buy_Pending_Qty = _orderWrapperBuy._instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
-        First_Leg_BuyOrder_Price = _orderWrapperBuy._instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_BUY);
-
-//        DEBUG_VARSHOW(reqQryDebugLog(), "o_modify_cancel_order:: First_Buy_Pending_Qty: ",First_Buy_Pending_Qty);
-//        DEBUG_VARSHOW(reqQryDebugLog(), "o_modify_cancel_order:: OrderBuySize: ",OrderBuySize);
-//        DEBUG_VARSHOW(reqQryDebugLog(), "o_modify_cancel_order:: FirstLegBuyTradedQty: ",FirstLegBuyTradedQty);
-        if(First_Buy_Pending_Qty > 0 && First_Leg_BuyOrder_Price > 0)
+        else
         {
             cond = 0;
-            if(cond == 0 && _MaxOrderLot > BuySizeSize)
-            {
-                if(First_Leg_BuyOrder_Price != BuyQuotePrice - TickSize && (BuyQuotePrice - TickSize) > 0)
-                {
-                    if(clock_gettime(CLOCK_REALTIME, &start) == -1){
-                        perror("clock gettime");
-                        exit( EXIT_FAILURE );
-                    }
-                    _orderWrapperBuy.replaceOrder(risk, BuyQuotePrice - TickSize, (OrderBuySize*BoardLotSizeBse) + FirstLegBuyTradedQty);
-                    if(clock_gettime(CLOCK_REALTIME, &end) == -1){
-                        perror("clock gettime");
-                        exit( EXIT_FAILURE );
-                    }
-                    double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
-                    DEBUG_VARSHOW(reqQryDebugLog(), "o_modify_cancel_order::1 Modify Buy Order Send Time: ",diff/1000);
-                    cond = 1;
-                }
-            }
-            if(cond == 0 && First_Leg_BuyOrder_Price != BuyQuotePrice && BuyQuotePrice > 0)
-            {
-                if(clock_gettime(CLOCK_REALTIME, &start) == -1){
-                    perror("clock gettime");
-                    exit( EXIT_FAILURE );
-                }
-                _orderWrapperBuy.replaceOrder(risk, BuyQuotePrice, (OrderBuySize*BoardLotSizeBse) + FirstLegBuyTradedQty);
-                if(clock_gettime(CLOCK_REALTIME, &end) == -1){
-                    perror("clock gettime");
-                    exit( EXIT_FAILURE );
-                }
-                double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
-                DEBUG_VARSHOW(reqQryDebugLog(), "o_modify_cancel_order::2 Modify Buy Order Send Time: ",diff/1000);
-                cond = 1;
-            }
-            if(cond == 0 && First_Buy_Pending_Qty != OrderBuySize && (std::floor(_MaxOrderLot/4)) <= OrderBuySize){
-                if(clock_gettime(CLOCK_REALTIME, &start) == -1){
-                    perror("clock gettime");
-                    exit( EXIT_FAILURE );
-                }
-                _orderWrapperBuy.replaceOrder(risk, 0, (OrderBuySize*BoardLotSizeBse) + FirstLegBuyTradedQty);
-                if(clock_gettime(CLOCK_REALTIME, &end) == -1){
-                    perror("clock gettime");
-                    exit( EXIT_FAILURE );
-                }
-                double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
-                DEBUG_VARSHOW(reqQryDebugLog(), "o_modify_cancel_order::3 Modify Buy Order Send Time: ",diff/1000);
-                cond = 1;
-            }
-        }
-    }
-    else if(BuySell == 2){
-        First_Sell_Pending_Qty = _orderWrapperSell._instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
-        First_Leg_SellOrder_Price = _orderWrapperSell._instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_SELL);
 
-//        DEBUG_VARSHOW(reqQryDebugLog(), "o_modify_cancel_order:: First_Sell_Pending_Qty: ",First_Sell_Pending_Qty);
-//        DEBUG_VARSHOW(reqQryDebugLog(), "o_modify_cancel_order:: OrderSellSize: ",OrderSellSize);
-//        DEBUG_VARSHOW(reqQryDebugLog(), "o_modify_cancel_order:: FirstLegSellTradedQty: ",FirstLegSellTradedQty);
-        if(First_Sell_Pending_Qty > 0 && First_Leg_SellOrder_Price > 0)
-        {
-            cond = 0;
             if(cond == 0 && _MaxOrderLot > SellSizeSize)
             {
                 if(First_Leg_SellOrder_Price != SellQuotePrice + TickSize && (SellQuotePrice + TickSize) > 0)
                 {
-                    if(clock_gettime(CLOCK_REALTIME, &start) == -1){
-                        perror("clock gettime");
-                        exit( EXIT_FAILURE );
-                    }
+                	if(clock_gettime(CLOCK_REALTIME, &start) == -1){
+			                perror("clock gettime");
+			                exit( EXIT_FAILURE );
+					}
                     _orderWrapperSell.replaceOrder(risk,SellQuotePrice + TickSize,(OrderSellSize*BoardLotSizeBse)+ FirstLegSellTradedQty);
                     if(clock_gettime(CLOCK_REALTIME, &end) == -1){
-                        perror("clock gettime");
-                        exit( EXIT_FAILURE );
-                    }
-                    double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
-                    DEBUG_VARSHOW(reqQryDebugLog(), "o_modify_cancel_order::1 Modify Sell Order Send Time: ",diff/1000);
+		                perror("clock gettime");
+		                exit( EXIT_FAILURE );
+					}
+					double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
+					DEBUG_VARSHOW(reqQryDebugLog(), "case 1: Modify Sell order send time: ",diff/1000);
                     cond = 1;
+                    DEBUG_VARSHOW(reqQryDebugLog(), "case 1: Modify Sell order at : ",SellQuotePrice + TickSize);
+                    DEBUG_VARSHOW(reqQryDebugLog(), "case 1: Modify Sell order at : ",(OrderSellSize*BoardLotSizeBse)+ FirstLegSellTradedQty);
                 }
             }
 
             if(cond == 0 && First_Leg_SellOrder_Price != SellQuotePrice && SellQuotePrice > 0)
             {
-                if(clock_gettime(CLOCK_REALTIME, &start) == -1){
-                    perror("clock gettime");
-                    exit( EXIT_FAILURE );
-                }
-                _orderWrapperSell.replaceOrder(risk,SellQuotePrice,(OrderSellSize*BoardLotSizeBse)+ FirstLegSellTradedQty);
-                if(clock_gettime(CLOCK_REALTIME, &end) == -1){
-                    perror("clock gettime");
-                    exit( EXIT_FAILURE );
-                }
-                double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
-                DEBUG_VARSHOW(reqQryDebugLog(), "o_modify_cancel_order::2 Modify Sell Order Send Time: ",diff/1000);
-                cond = 1;
-            }
-            if(cond == 0 && First_Sell_Pending_Qty != OrderSellSize && (std::floor(_MaxOrderLot/4)) <= OrderSellSize){
-                if(clock_gettime(CLOCK_REALTIME, &start) == -1){
-                    perror("clock gettime");
-                    exit( EXIT_FAILURE );
-                }
-                _orderWrapperSell.replaceOrder(risk,0,(OrderSellSize*BoardLotSizeBse)+ FirstLegSellTradedQty);
-                if(clock_gettime(CLOCK_REALTIME, &end) == -1){
-                    perror("clock gettime");
-                    exit( EXIT_FAILURE );
-                }
-                double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
-                DEBUG_VARSHOW(reqQryDebugLog(), "o_modify_cancel_order::3 Modify Sell Order Send Time: ",diff/1000);
-                cond = 1;
-            }
+            	if(clock_gettime(CLOCK_REALTIME, &start) == -1){
+		                perror("clock gettime");
+		                exit( EXIT_FAILURE );
+				}
+             _orderWrapperSell.replaceOrder(risk,SellQuotePrice,(OrderSellSize*BoardLotSizeBse)+ FirstLegSellTradedQty);
+             	if(clock_gettime(CLOCK_REALTIME, &end) == -1){
+	                perror("clock gettime");
+	                exit( EXIT_FAILURE );
+				}
+				double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
+				DEBUG_VARSHOW(reqQryDebugLog(), "case 2: Modify Sell order send time: ",diff/1000);
+             DEBUG_VARSHOW(reqQryDebugLog(), "case 2: Modify Sell order at : ",SellQuotePrice);
+             DEBUG_VARSHOW(reqQryDebugLog(), "case 2: Modify Sell order at : ",(OrderSellSize*BoardLotSizeBse)+ FirstLegSellTradedQty);
+             cond = 1;
+            } 
+
+            if(cond == 0 && First_Sell_Pending_Qty != OrderSellSize) {
+            	if(clock_gettime(CLOCK_REALTIME, &start) == -1){
+		                perror("clock gettime");
+		                exit( EXIT_FAILURE );
+				}
+        	 _orderWrapperSell.replaceOrder(risk,0,(OrderSellSize*BoardLotSizeBse)+ FirstLegSellTradedQty);
+        	    if(clock_gettime(CLOCK_REALTIME, &end) == -1){
+	                perror("clock gettime");
+	                exit( EXIT_FAILURE );
+				}
+			double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
+			DEBUG_VARSHOW(reqQryDebugLog(), "case 3: Modify Sell order send time: ",diff/1000);
+             DEBUG_VARSHOW(reqQryDebugLog(), "case 3: Modify Sell order at : ",(OrderSellSize*BoardLotSizeBse)+ FirstLegSellTradedQty);
+             cond = 1;
+            }         
         }
-    }
-}
-
-void CurrencyBseNse::o_modify_cancel_sec_order(int BuySell){
-    SellPriceNse = mktDataNse->getAskPrice(0);
-    BuyPriceNse = mktDataNse->getBidPrice(0);
-
-    if(BuySell == 1){
-        for(auto iter = OrderIdOrderWrapperBuyMap.begin(); iter != OrderIdOrderWrapperBuyMap.end(); ++iter)
-        {
-            std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> p = iter->second;
-            API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondBuy = p.first;
-            API2::DATA_TYPES::QTY temp = _orderWrapperSecondBuy->_instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
-            if(temp > 0){
-                if(!(_orderWrapperSecondBuy->_isPendingNew || _orderWrapperSecondBuy->_isPendingReplace || _orderWrapperSecondBuy->_isPendingCancel)){
-                    OrderPriceBuySecond = _orderWrapperSecondBuy->_instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_BUY);
-                    dTrigger = OrderPriceBuySecond + _TriggerPrice;
-                    if(BuyPriceNse >= dTrigger && OrderPriceBuySecond > 0){
-                        _orderWrapperSecondBuy->replaceOrder(risk,dTrigger + _StopLoss, 0);
-                    }
-                }
-                else{
-                    //DEBUG_MESSAGE(reqQryDebugLog(), "Second leg Buy is in Pending State");
-                }
-            }
-        }
-
-        for(auto iter = OrderIdOrderWrapperBuyMapSelfTrade.begin(); iter != OrderIdOrderWrapperBuyMapSelfTrade.end(); ++iter)
-        {
-            std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> p = iter->second;
-            API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondBuy = p.first;
-            API2::DATA_TYPES::QTY temp = _orderWrapperSecondBuy->_instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
-            SecLegBuyOrderP = p.second;
-            if(temp > 0){
-                if(!(_orderWrapperSecondBuy->_isPendingNew || _orderWrapperSecondBuy->_isPendingReplace || _orderWrapperSecondBuy->_isPendingCancel)){
-                    OrderPriceBuySecond = _orderWrapperSecondBuy->_instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_BUY);
-                    dTrigger = OrderPriceBuySecond + _TriggerPrice;
-                    iCond = 0;
-                    if(BuyPriceNse >= dTrigger && OrderPriceBuySecond > 0)
-                    {
-                        _orderWrapperSecondBuy->replaceOrder(risk,dTrigger + _StopLoss, 0);
-                        iCond = 1;
-                    }
-
-                    if(iCond == 0 && SellPriceNse <= SecLegBuyOrderP && OrderPriceBuySecond != SecLegBuyOrderP)
-                    {
-                        _orderWrapperSecondBuy->replaceOrder(risk,SecLegBuyOrderP, 0);
-                        iCond = 1;
-                    }
-
-                    if(iCond == 0 && SellPriceNse > SecLegBuyOrderP)
-                    {
-                        if(SellPriceNse - OrderPriceBuySecond > TickSize)
-                        {
-                            NewPrice = OrderPriceBuySecond + TickSize;
-
-                            if(NewPrice <= SecLegBuyOrderP)
-                            {
-                                _orderWrapperSecondBuy->replaceOrder(risk,NewPrice, 0);
-                                iCond = 1;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    else if(BuySell == 2){
-        for(auto iter = OrderIdOrderWrapperSellMap.begin(); iter != OrderIdOrderWrapperSellMap.end(); ++iter)
-        {
-            std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> p = iter->second;
-            API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondSell = p.first;
-            API2::DATA_TYPES::QTY temp = _orderWrapperSecondSell->_instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
-            if(temp > 0){
-                if(!(_orderWrapperSecondSell->_isPendingNew || _orderWrapperSecondSell->_isPendingReplace || _orderWrapperSecondSell->_isPendingCancel)){
-                    OrderPriceSellSecond = _orderWrapperSecondSell->_instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_SELL);
-                    dTrigger = OrderPriceSellSecond - _TriggerPrice;
-                    if(SellPriceNse <= dTrigger && OrderPriceSellSecond > 0){
-                       _orderWrapperSecondSell->replaceOrder(risk,dTrigger - _StopLoss,0);
-                    }
-                }
-                else{
-                    //DEBUG_MESSAGE(reqQryDebugLog(), "Second leg Sell is in Pending State");
-                }
-            }
-        }
-
-        for(auto iter = OrderIdOrderWrapperSellMapSelfTrade.begin(); iter != OrderIdOrderWrapperSellMapSelfTrade.end(); ++iter)
-        {
-            std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> p = iter->second;
-            API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondSell = p.first;
-            API2::DATA_TYPES::QTY temp = _orderWrapperSecondSell->_instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
-            SecLegSellOrderP = p.second;
-            if(temp > 0){
-                if(!(_orderWrapperSecondSell->_isPendingNew || _orderWrapperSecondSell->_isPendingReplace || _orderWrapperSecondSell->_isPendingCancel)){
-                    OrderPriceSellSecond = _orderWrapperSecondSell->_instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_SELL);
-                    dTrigger = OrderPriceSellSecond - _TriggerPrice;
-                    iCond = 0;
-                    if(SellPriceNse <= dTrigger && OrderPriceSellSecond > 0)
-                    {
-                        _orderWrapperSecondSell->replaceOrder(risk,dTrigger - _StopLoss,0);
-                        iCond = 1;
-                    }
-                    if(iCond == 0 && BuyPriceNse >= SecLegSellOrderP && OrderPriceSellSecond != SecLegSellOrderP)
-                    {
-                        _orderWrapperSecondSell->replaceOrder(risk,SecLegSellOrderP, 0);
-                        iCond = 1;
-                    }
-
-                    if(iCond == 0 && BuyPriceNse < SecLegSellOrderP)
-                    {
-                        if(OrderPriceSellSecond - BuyPriceNse > TickSize)
-                        {
-                            NewPrice = OrderPriceSellSecond - TickSize;
-                            if(NewPrice >= SecLegSellOrderP)
-                            {
-                                _orderWrapperSecondSell->replaceOrder(risk,NewPrice, 0);
-                                iCond = 1;
-                            }
-                        }
-                    }
-                }
-                else{
-                    //DEBUG_MESSAGE(reqQryDebugLog(), "Second leg Self Trade Sell is in Pending State");
-                }
-            }
-        }
-    }
-}
+    }    
 
 
-void CurrencyBseNse::onMarketDataEvent(UNSIGNED_LONG symbolId)
-{
-    DEBUG_VARSHOW(reqQryDebugLog(), "Feed event---------------: ",symbolId);
-
-    if(_orderWrapperBuy._isPendingNew || _orderWrapperBuy._isPendingReplace || _orderWrapperBuy._isPendingCancel){
-        DEBUG_MESSAGE(reqQryDebugLog(), "_orderWrapperBuy @ intermediate condition ");
-    }
-    else if(!_orderWrapperBuy._isReset){
-        o_modify_cancel_order(1);
-    }
-    else if(_orderWrapperBuy._isReset){
-        o_place_order(1);
-    }
-
-    if(_orderWrapperSell._isPendingNew || _orderWrapperSell._isPendingReplace || _orderWrapperSell._isPendingCancel)
+    if(_orderWrapperSell._isReset && Error == 0)		// 1 when no order
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "_orderWrapperSell @ intermiadiate condition");
-    }
-    else if(!_orderWrapperSell._isReset){
-        o_modify_cancel_order(2);
-    }
-    else if(_orderWrapperSell._isReset){
-        o_place_order(2);
-    }
 
-    Second_Buy_Pending_Qty = _FeedInstrumentNse->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeNse;
-    if(Second_Buy_Pending_Qty > 0)
+    if(SellQuotePrice > 0 && FeedCount > 3 && Second_leg_BuyTraded - First_leg_SellTraded == 0 && First_Sell_Pending_Qty == 0 && Second_Buy_Pending_Qty == 0 && _SellTotalLot >= First_leg_SellTraded + OrderSellSize + _TotalSellTraded)
     {
-        o_modify_cancel_sec_order(1);
+    	if(clock_gettime(CLOCK_REALTIME, &start) == -1){
+                perror("clock gettime");
+                exit( EXIT_FAILURE );
+		}
+    _orderWrapperSell.newOrder(risk,SellQuotePrice,OrderSellSize*BoardLotSizeBse);
+    if(clock_gettime(CLOCK_REALTIME, &end) == -1){
+        perror("clock gettime");
+        exit( EXIT_FAILURE );
+	}
+	double diff = (end.tv_sec*1000000000 + end.tv_nsec) - (start.tv_sec*1000000000 + start.tv_nsec);
+	DEBUG_VARSHOW(reqQryDebugLog(), "New Sell order send time: ",diff/1000);
+    DEBUG_VARSHOW(reqQryDebugLog(), " New Sell Order placed at : ",SellQuotePrice);
+    DEBUG_VARSHOW(reqQryDebugLog(), " New Sell Order placed at : ",OrderSellSize*BoardLotSizeBse);
+    OrderIdOrderWrapperBuyMap.clear();
+    OrderIdOrderWrapperBuyMapSelfTrade.clear();
+    FirstLegSellTradePrice = 0;
+    FirstLegSellTradedQty = 0;
+    }
+    }
     }
 
-    Second_Sell_Pending_Qty = _FeedInstrumentNse->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeNse;
     if(Second_Sell_Pending_Qty > 0)
     {
-        o_modify_cancel_sec_order(2);
+        for(auto iter = OrderIdOrderWrapperSellMap.begin(); iter != OrderIdOrderWrapperSellMap.end(); ++iter)
+            {
+                OrderPriceSellSecond = iter->second->_instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_SELL);
+                dTrigger = OrderPriceSellSecond - _TriggerPrice;
+                // DEBUG_VARSHOW(reqQryDebugLog(), " OrderPriceSellSecond : ",OrderPriceSellSecond);
+                // DEBUG_VARSHOW(reqQryDebugLog(), " dTrigger : ",dTrigger);
+                // DEBUG_VARSHOW(reqQryDebugLog(), " SellPriceNse : ",SellPriceNse);
+                 if(SellPriceNse <= dTrigger && OrderPriceSellSecond > 0){
+                 	iter->second->replaceOrder(risk,dTrigger - _StopLoss,0);
+                 	//DEBUG_VARSHOW(reqQryDebugLog(), " Modify at : ",dTrigger - _StopLoss);
+                 }                 
+                    
+            }
+
+        for(auto iter = OrderIdOrderWrapperSellMapSelfTrade.begin(); iter != OrderIdOrderWrapperSellMapSelfTrade.end(); ++iter)
+            {
+                OrderPriceSellSecond = iter->second->_instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_SELL);
+                dTrigger = OrderPriceSellSecond - _TriggerPrice;
+                // DEBUG_VARSHOW(reqQryDebugLog(), " OrderPriceSellSecond : ",OrderPriceSellSecond);
+                // DEBUG_VARSHOW(reqQryDebugLog(), " dTrigger : ",dTrigger);
+                // DEBUG_VARSHOW(reqQryDebugLog(), " SellPriceNse : ",SellPriceNse);
+                iCond = 0;
+                if(SellPriceNse <= dTrigger && OrderPriceSellSecond > 0)
+                {
+                	iter->second->replaceOrder(risk,dTrigger - _StopLoss,0);
+                	//DEBUG_VARSHOW(reqQryDebugLog(), "1 Modify at : ",dTrigger - _StopLoss);
+                	iCond = 1;                
+                }
+
+
+                // DEBUG_VARSHOW(reqQryDebugLog(), " BuyPriceNse : ",BuyPriceNse);
+                // DEBUG_VARSHOW(reqQryDebugLog(), " SecLegSellOrderP : ",SecLegSellOrderP);
+                if(iCond == 0 && BuyPriceNse >= SecLegSellOrderP && OrderPriceSellSecond != SecLegSellOrderP)
+                {
+                     iter->second->replaceOrder(risk,SecLegSellOrderP, 0);
+                     //DEBUG_VARSHOW(reqQryDebugLog(), "2 Modify at : ",SecLegSellOrderP);
+                     iCond = 1;
+                }
+
+                 if(iCond == 0 && BuyPriceNse < SecLegSellOrderP)
+                 {
+                     if(OrderPriceSellSecond - BuyPriceNse > TickSize)
+                     {
+                         NewPrice = OrderPriceSellSecond - TickSize;
+                         //DEBUG_VARSHOW(reqQryDebugLog(), "NewPrice: ",NewPrice);
+                         if(NewPrice >= SecLegSellOrderP)
+                         {
+                             iter->second->replaceOrder(risk,NewPrice, 0);
+                             //DEBUG_VARSHOW(reqQryDebugLog(), "3 Modify at : ",NewPrice);
+                             iCond = 1;
+                         }
+                     }
+                 }
+            }
+            //DEBUG_FLUSH(reqQryDebugLog());
     }
 
-//    DEBUG_FLUSH(reqQryDebugLog());
-}
+    if(Second_Buy_Pending_Qty > 0)
+    {
+        for(auto iter = OrderIdOrderWrapperBuyMap.begin(); iter != OrderIdOrderWrapperBuyMap.end(); ++iter)
+            {
+                OrderPriceBuySecond = iter->second->_instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_BUY);
+                dTrigger = OrderPriceBuySecond + _TriggerPrice;   
+                // DEBUG_VARSHOW(reqQryDebugLog(), " OrderPriceBuySecond : ",OrderPriceBuySecond);
+                // DEBUG_VARSHOW(reqQryDebugLog(), " dTrigger : ",dTrigger);
+                // DEBUG_VARSHOW(reqQryDebugLog(), " BuyPriceNse : ",BuyPriceNse);             
+                if(BuyPriceNse >= dTrigger && OrderPriceBuySecond > 0){
+                	iter->second->replaceOrder(risk,dTrigger + _StopLoss, 0);
+                	//DEBUG_VARSHOW(reqQryDebugLog(), " Modify at : ",dTrigger + _StopLoss);
+                }               
+                    
+            }
+
+        for(auto iter = OrderIdOrderWrapperBuyMapSelfTrade.begin(); iter != OrderIdOrderWrapperBuyMapSelfTrade.end(); ++iter)
+            {
+                OrderPriceBuySecond = iter->second->_instrument->getLastQuotedPrice(API2::CONSTANTS::CMD_OrderMode_BUY);
+                dTrigger = OrderPriceBuySecond + _TriggerPrice;
+                // DEBUG_VARSHOW(reqQryDebugLog(), " OrderPriceBuySecond : ",OrderPriceBuySecond);
+                // DEBUG_VARSHOW(reqQryDebugLog(), " dTrigger : ",dTrigger);
+                // DEBUG_VARSHOW(reqQryDebugLog(), " BuyPriceNse : ",BuyPriceNse); 
+                iCond = 0;
+                if(BuyPriceNse >= dTrigger && OrderPriceBuySecond > 0)
+                {
+                iter->second->replaceOrder(risk,dTrigger + _StopLoss, 0);
+                //DEBUG_VARSHOW(reqQryDebugLog(), "4 Modify at : ",dTrigger + _StopLoss);
+                iCond = 1;
+                }
+
+
+                // DEBUG_VARSHOW(reqQryDebugLog(), " SellPriceNse : ",SellPriceNse);
+                // DEBUG_VARSHOW(reqQryDebugLog(), " SecLegBuyOrderP : ",SecLegBuyOrderP);
+                if(iCond == 0 && SellPriceNse <= SecLegBuyOrderP && OrderPriceBuySecond != SecLegBuyOrderP)
+                {
+                    iter->second->replaceOrder(risk,SecLegBuyOrderP, 0);
+                    //DEBUG_VARSHOW(reqQryDebugLog(), "5 Modify at : ",SecLegBuyOrderP);
+                    iCond = 1;
+                }
+
+                if(iCond == 0 && SellPriceNse > SecLegBuyOrderP)
+                {
+                    if(SellPriceNse - OrderPriceBuySecond > TickSize)
+                    {
+                        NewPrice = OrderPriceBuySecond + TickSize;
+                        //DEBUG_VARSHOW(reqQryDebugLog(), "NewPrice: ",NewPrice);
+                        if(NewPrice <= SecLegBuyOrderP)
+                        {
+                            iter->second->replaceOrder(risk,NewPrice, 0);
+                            //DEBUG_VARSHOW(reqQryDebugLog(), "3 Modify at : ",NewPrice);
+                            iCond = 1;
+                        }
+                    }
+                }
+            }
+            //DEBUG_FLUSH(reqQryDebugLog());
+    }
+    DEBUG_FLUSH(reqQryDebugLog());
+    }
 
 bool CurrencyBseNse::setParameters(API2::UserParams *params)
 {
@@ -766,7 +758,6 @@ bool CurrencyBseNse::setParameters(API2::UserParams *params)
     FirstLegBuyTradedQty = 0;
     FirstLegSellTradedQty = 0;
     ParamError = 0;
-    FlushCounter = 0;
     _BuySide = API2::CONSTANTS::CMD_OrderMode_BUY;
     _SellSide = API2::CONSTANTS::CMD_OrderMode_SELL;
 
@@ -775,14 +766,14 @@ bool CurrencyBseNse::setParameters(API2::UserParams *params)
 
     if(params->getValue("Acc Detail 1",accountDetailLeg1)!=API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "Issue in FirstLegAccount");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in FirstLegAccount");
         DEBUG_FLUSH(reqQryDebugLog());
         ParamError = 1;
         return false ;
     }
     if(params->getValue("Acc Detail 2",accountDetailLeg2)!=API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "Issue in SecondLegAccount");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in SecondLegAccount");
         DEBUG_FLUSH(reqQryDebugLog());
         ParamError = 1;
         return false;
@@ -807,7 +798,7 @@ bool CurrencyBseNse::setParameters(API2::UserParams *params)
 
     if(params->getValue("TotalBuyTraded",TotalBuyTraded) != API2::UserParamsError_OK || params->getValue("TotalSellTraded",TotalSellTraded) != API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in TotalBuyTraded OR TotalSellTraded");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in TotalBuyTraded OR TotalSellTraded");
         DEBUG_FLUSH(reqQryDebugLog());
         ParamError = 1;
         return false;
@@ -830,16 +821,16 @@ bool CurrencyBseNse::setParameters(API2::UserParams *params)
 
     if(params->getValue("BuyTotalLot",BuyTotalLot) != API2::UserParamsError_OK || params->getValue("SellTotalLot",SellTotalLot) != API2::UserParamsError_OK)
 	{
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in BuyTotal_Lot OR SellTotal_Lot");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in BuyTotal_Lot OR SellTotal_Lot");
         DEBUG_FLUSH(reqQryDebugLog());
         ParamError = 1;
         return false;
 	}
 	else
 	{
-        if(BuyTotalLot - _TotalBuyTraded > 1000 || SellTotalLot - _TotalSellTraded > 1000)
+        if(BuyTotalLot - _TotalBuyTraded > 2000 || SellTotalLot - _TotalSellTraded > 2000)
         {
-            DEBUG_MESSAGE(reqQryDebugLog(), "Open BuyTotal_Lot OR SellTotal_Lot cant be more than 1000");
+            DEBUG_MESSAGE(reqQryDebugLog(), "Open BuyTotal_Lot OR SellTotal_Lot cant be more than 2000");
             DEBUG_FLUSH(reqQryDebugLog());
             ParamError = 1;
             return false;
@@ -849,79 +840,81 @@ bool CurrencyBseNse::setParameters(API2::UserParams *params)
             _BuyTotalLot = BuyTotalLot;
             _SellTotalLot = SellTotalLot;
         }
-	}   
+	}
 
     if(params->getValue("MaxOrderLot",MaxOrderLot) != API2::UserParamsError_OK)
 	{
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in Order_Lot");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in Order_Lot");
         DEBUG_FLUSH(reqQryDebugLog());
         ParamError = 1;
         return false;
 	}
 	else
 	{
-        if(MaxOrderLot > 0 && MaxOrderLot < 50){
-            _MaxOrderLot = MaxOrderLot;
-        }
-        else
-        {
-            DEBUG_MESSAGE(reqQryDebugLog(), "issue in MaxOrderLot entered into user Parameters.");
-            DEBUG_FLUSH(reqQryDebugLog());
-            ParamError = 1;
-            return false;
-        }
-    }
+	    if(MaxOrderLot > 0 && MaxOrderLot <= 200){
+	    	_MaxOrderLot = MaxOrderLot;
+	    }    
+	    else
+	    {
+	        DEBUG_MESSAGE(reqQryDebugLog(), "Error in MaxOrderLot entered into user Parameters.");
+	        DEBUG_FLUSH(reqQryDebugLog());
+	        ParamError = 1;
+	        return false;
+	    }
+	}  
+
+    //DEBUG_VARSHOW(reqQryDebugLog(), " _MaxOrderLot : ",_MaxOrderLot);
 
     if(params->getValue("StopLoss",StopLoss1) != API2::UserParamsError_OK || params->getValue("TriggerPrice",TriggerPrice1) != API2::UserParamsError_OK || params->getValue("Tolerance",Tolerance1) != API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in Stoploss / TriggerPrice / Tolerance  entered into user Parameters.");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in Stoploss / TriggerPrice / Tolerance  entered into user Parameters.");
         DEBUG_FLUSH(reqQryDebugLog());
         ParamError = 1;
         return false;
     }
     else
     {
-        _StopLoss = StopLoss1;
-        _TriggerPrice = TriggerPrice1;
-        _Tolerance = Tolerance1;
-    }  
+	    _StopLoss = StopLoss1;
+	    _TriggerPrice = TriggerPrice1;
+	    _Tolerance = Tolerance1;
+    }   
 
     if(params->getValue("BuyDiff",BuyDiff1) != API2::UserParamsError_OK || params->getValue("SellDiff",SellDiff1) != API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in Difference entered into user Parameters.");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in Difference entered into user Parameters.");
         DEBUG_FLUSH(reqQryDebugLog());
         ParamError = 1;
         return false;
     }
     else
     {
-        if(BuyDiff1 + SellDiff1 < 0)
-        {
-            DEBUG_MESSAGE(reqQryDebugLog(), "Sum of Buy/Sell Difference can't be less than Zero");
-            DEBUG_FLUSH(reqQryDebugLog());
-            ParamError = 1;
-            return false;
-        }
-        else
-        {
-            if(BuyDiff1 < -100 || SellDiff1 < -100)
-            {
-                DEBUG_MESSAGE(reqQryDebugLog(), "Sum of BuyDiff1 < -0.0100 || SellDiff1 < 0.0100 ");
-                DEBUG_FLUSH(reqQryDebugLog());
-                ParamError = 1;
-                return false;
-            }
-            else
-            {
-                _BuyDiff = BuyDiff1;
-                _SellDiff = SellDiff1;
-            }
-        }
+	    if(BuyDiff1 + SellDiff1 < 0)
+	    {
+		    DEBUG_MESSAGE(reqQryDebugLog(), "Sum of Buy/Sell Difference can't be less than Zero");
+		    DEBUG_FLUSH(reqQryDebugLog());
+		    ParamError = 1;
+		    return false;
+	    }
+	    else
+	    {
+		    if(BuyDiff1 < -100 || SellDiff1 < -100)
+		    {
+		        DEBUG_MESSAGE(reqQryDebugLog(), "Sum of BuyDiff1 < -0.0100 || SellDiff1 < 0.0100 ");
+		        DEBUG_FLUSH(reqQryDebugLog());
+		        ParamError = 1;
+		        return false;
+		    }
+		    else
+		    {
+		        _BuyDiff = BuyDiff1;
+		        _SellDiff = SellDiff1;
+		    }
+	    }
     }   
 
     if(params->getValue("IsBidding",IsBidding) != API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in IsBidding");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in IsBidding");
         DEBUG_FLUSH(reqQryDebugLog());
         ParamError = 1;
         return false;
@@ -929,91 +922,91 @@ bool CurrencyBseNse::setParameters(API2::UserParams *params)
     else
     {
         _IsBidding = IsBidding;
-       //_IsBidding.copy(IsBidding);
     }
 
     if(params->getValue("Depth",Depth) != API2::UserParamsError_OK)
     {
-        DEBUG_MESSAGE(reqQryDebugLog(), "issue in Depth ");
+        DEBUG_MESSAGE(reqQryDebugLog(), "Error in Depth ");
         DEBUG_FLUSH(reqQryDebugLog());
         ParamError = 1;
         return false;
     }
     else{
-        _Depth = Depth;
+        _Depth = Depth;                           // First = 0 or Second = 1
     }
 
-     _tradeInstrument1 = createNewInstrument(symbolId1,false, false);
-     _tradeInstrument2 = createNewInstrument(symbolId2,false, false);
+    _tradeInstrument1 = createNewInstrument(symbolId1,false, false);
+    _tradeInstrument2 = createNewInstrument(symbolId2,false, false);
 
-     Symbol1 = _tradeInstrument1->getStaticData()->symbol;
-     Symbol2 = _tradeInstrument2->getStaticData()->symbol;
-     Maturity1 = _tradeInstrument1->getStaticData()->maturityYearmon;
-     Maturity2 = _tradeInstrument2->getStaticData()->maturityYearmon;
-     MaturityDay1 = _tradeInstrument1->getStaticData()->maturityDay;
-     MaturityDay2 = _tradeInstrument2->getStaticData()->maturityDay;
-     DateDiff = MaturityDay1  - MaturityDay2;
+    Symbol1 = _tradeInstrument1->getStaticData()->symbol;
+    Symbol2 = _tradeInstrument2->getStaticData()->symbol;
+    Maturity1 = _tradeInstrument1->getStaticData()->maturityYearmon;
+    Maturity2 = _tradeInstrument2->getStaticData()->maturityYearmon;
+    MaturityDay1 = _tradeInstrument1->getStaticData()->maturityDay;
+    MaturityDay2 = _tradeInstrument2->getStaticData()->maturityDay;
+    DateDiff = MaturityDay1  - MaturityDay2;
 
-     if(DateDiff < 0){
-         DateDiff = -DateDiff;
-     }
+    if(DateDiff < 0){
+    	DateDiff = -DateDiff;
+    }
+         
 
-     if (Symbol1.compare(Symbol2) == 0)
-     {
-         if(Maturity1 != Maturity2 || DateDiff > 2)
-         {
-             DEBUG_MESSAGE(reqQryDebugLog(), "Expiry MisMatch... ");
-             DEBUG_FLUSH(reqQryDebugLog());
-             ParamError = 1;
-             return false;
-         }
-     }
-     else
-     {
-         DEBUG_MESSAGE(reqQryDebugLog(), "Symbols Mismatch in Portfolios ");
-         DEBUG_FLUSH(reqQryDebugLog());
-         ParamError = 1;
-         return false;
-     }
+    if (Symbol1.compare(Symbol2) == 0)
+    {
+	    if(Maturity1 != Maturity2 || DateDiff > 2)
+	    {
+		    DEBUG_MESSAGE(reqQryDebugLog(), "Expiry MisMatch... ");
+		    DEBUG_FLUSH(reqQryDebugLog());
+		    ParamError = 1;
+		    return false;
+	    }
+    }
+    else
+    {
+	    DEBUG_MESSAGE(reqQryDebugLog(), "Symbols Mismatch in Portfolios ");
+	    DEBUG_FLUSH(reqQryDebugLog());
+	    ParamError = 1;
+	    return false;
+    }
 
 
-     if( int(_tradeInstrument1->getStaticData()->securityType) == API2::CONSTANTS::CMD_SecurityType_OPTION &&
+    if( int(_tradeInstrument1->getStaticData()->securityType) == API2::CONSTANTS::CMD_SecurityType_OPTION &&
           int(_tradeInstrument2->getStaticData()->securityType) == API2::CONSTANTS::CMD_SecurityType_OPTION   )
-     {
+    {
 
-         if( int(_tradeInstrument1->getStaticData()->optionMode)!= int(_tradeInstrument2->getStaticData()->optionMode) )
-         {
-             DEBUG_MESSAGE(reqQryDebugLog(), "Token Must be same Option Type... ");
-             DEBUG_FLUSH(reqQryDebugLog());
-             ParamError = 1;
-             return false;
-         }
+        if( int(_tradeInstrument1->getStaticData()->optionMode)!= int(_tradeInstrument2->getStaticData()->optionMode) )
+        {
+            DEBUG_MESSAGE(reqQryDebugLog(), "Token Must be same Option Type... ");
+            DEBUG_FLUSH(reqQryDebugLog());
+            ParamError = 1;
+            return false;
+        }
 
-         if( _tradeInstrument1->getStaticData()->strikePrice != _tradeInstrument2->getStaticData()->strikePrice  )
-         {
-             DEBUG_MESSAGE(reqQryDebugLog(), "Stike Must Be same in Portfolio... ");
-             DEBUG_FLUSH(reqQryDebugLog());
-             ParamError = 1;
-             return false;
-         }
+        if( _tradeInstrument1->getStaticData()->strikePrice != _tradeInstrument2->getStaticData()->strikePrice  )
+        {
+            DEBUG_MESSAGE(reqQryDebugLog(), "Stike Must Be same in Portfolio... ");
+            DEBUG_FLUSH(reqQryDebugLog());
+            ParamError = 1;
+            return false;
+        }
 
-     }
-     else
-     {
-         if( int(_tradeInstrument1->getStaticData()->securityType) == API2::CONSTANTS::CMD_SecurityType_FUTURE &&
+    }
+    else
+    {
+        if( int(_tradeInstrument1->getStaticData()->securityType) == API2::CONSTANTS::CMD_SecurityType_FUTURE &&
               int(_tradeInstrument2->getStaticData()->securityType) == API2::CONSTANTS::CMD_SecurityType_FUTURE)
-         {
+        {
 
-         }
-         else
-         {
-             DEBUG_MESSAGE(reqQryDebugLog(), "Wrong Combination of Tokens in Portfolio... ");
-             DEBUG_FLUSH(reqQryDebugLog());
-             ParamError = 1;
-             return false;
-         }
+        }
+        else
+        {
+            DEBUG_MESSAGE(reqQryDebugLog(), "Wrong Combination of Tokens in Portfolio... ");
+            DEBUG_FLUSH(reqQryDebugLog());
+            ParamError = 1;
+            return false;
+        }
 
-     }
+    }
 
     if(_tradeInstrument1->getStaticData()->marketId == "NSECDS" && _tradeInstrument2->getStaticData()->marketId == "BSECDS")
     {
@@ -1027,44 +1020,44 @@ bool CurrencyBseNse::setParameters(API2::UserParams *params)
     }
     else
     {
-      if(_tradeInstrument1->getStaticData()->marketId == "BSECDS" && _tradeInstrument2->getStaticData()->marketId == "NSECDS")
-      {
-          _NseTradeInstr = _tradeInstrument2;
-          _BseTradeInstr = _tradeInstrument1;
-          _FeedInstrumentNse = createNewInstrument(symbolId2,true, true, false);
-          BoardLotSizeNse = _NseTradeInstr->getStaticData()->marketLot;
-          BoardLotSizeBse = _BseTradeInstr->getStaticData()->marketLot;
-          AccountDetailNse = accountDetailLeg2;
-          AccountDetailBse = accountDetailLeg1;
-      }
-      else
-      {
-          DEBUG_MESSAGE(reqQryDebugLog(), "Token combination doesnt match CDS-BCD ");
-          DEBUG_FLUSH(reqQryDebugLog());
-          ParamError = 1;
-          return false;
-      }
+      	if(_tradeInstrument1->getStaticData()->marketId == "BSECDS" && _tradeInstrument2->getStaticData()->marketId == "NSECDS")
+      	{
+	        _NseTradeInstr = _tradeInstrument2;
+	        _BseTradeInstr = _tradeInstrument1;
+	        _FeedInstrumentNse = createNewInstrument(symbolId2,true, true, false);
+	        BoardLotSizeNse = _NseTradeInstr->getStaticData()->marketLot;
+	        BoardLotSizeBse = _BseTradeInstr->getStaticData()->marketLot;
+	        AccountDetailNse = accountDetailLeg2;
+	        AccountDetailBse = accountDetailLeg1;
+      	}
+      	else
+      	{
+	        DEBUG_MESSAGE(reqQryDebugLog(), "Token combination doesnt match CDS-BCD ");
+	        DEBUG_FLUSH(reqQryDebugLog());
+	        ParamError = 1;
+	        return false;
+      	}
     }   
 
-    TickSize = _FeedInstrumentNse->getStaticData()->tickSize;
-    mktDataNse = reqQryMarketData(_FeedInstrumentNse->getSymbolId());
     _orderWrapperBuy = API2_NEW::COMMON::OrderWrapper(_BseTradeInstr, _BuySide, this, AccountDetailBse);
     _orderWrapperSell = API2_NEW::COMMON::OrderWrapper(_BseTradeInstr, _SellSide, this, AccountDetailBse);
 
-    DEBUG_FLUSH(reqQryDebugLog());
-    return true;
+     DEBUG_FLUSH(reqQryDebugLog());
+     return true;
 }
 
 void CurrencyBseNse::onCanceled(API2::OrderConfirmation &confirmation, API2::COMMON::OrderId *orderId)
 {
+    //DEBUG_MESSAGE(reqQryDebugLog(), "onCanceled");
+
+
     TickSize = _FeedInstrumentNse->getStaticData()->tickSize;
     if(_orderWrapperBuy._orderId == orderId)
     {
-         _orderWrapperBuy._isPendingCancel = false;
-         _orderWrapperBuy._isPendingNew = false;
-         _orderWrapperBuy._isPendingReplace = false;
-         _orderWrapperBuy.reset();
-         o_place_order(1);
+     _orderWrapperBuy._isPendingCancel = false;
+     _orderWrapperBuy._isPendingNew = false;
+     _orderWrapperBuy._isPendingReplace = false;
+     _orderWrapperBuy.reset();
     }
 
     if(_orderWrapperSell._orderId == orderId)
@@ -1072,446 +1065,433 @@ void CurrencyBseNse::onCanceled(API2::OrderConfirmation &confirmation, API2::COM
          _orderWrapperSell._isPendingCancel = false;
          _orderWrapperSell._isPendingNew = false;
          _orderWrapperSell._isPendingReplace = false;
-         _orderWrapperSell.reset();
-         o_place_order(2);
+         _orderWrapperSell.reset();        
     }
 
     auto iter2 = OrderIdOrderWrapperBuyMap.find(orderId);
-    if(iter2 != OrderIdOrderWrapperBuyMap.end())
-    {
-        std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE > p = iter2->second;
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondBuy = p.first;
-        SecLegBuyOrderP = _orderWrapperSecondBuy->getOrderPrice();
-        API2::SingleOrder* order = reqQryOrder(confirmation.getClOrderId());
-        SIGNED_LONG CancelQty = 0;
+        if(iter2 != OrderIdOrderWrapperBuyMap.end())
+            {
+                SecLegBuyOrderP = iter2->second->getOrderPrice() - TickSize;
+                API2::SingleOrder* order = reqQryOrder(confirmation.getClOrderId());
+                         SIGNED_LONG CancelQty = 0;
 
-        if( order ){
-            CancelQty = order->getQuantity() - order->getFilledQuantity();
-        }
+                     if( order )
+                        CancelQty = order->getQuantity() - order->getFilledQuantity();
 
-        if(SecLegBuyOrderP > 0)
-        {
-            API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondBuy = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_BuySide,this,AccountDetailNse);
-            _orderWrapperSecondBuy->reset();
-            _orderWrapperSecondBuy->newOrder(risk,SecLegBuyOrderP - TickSize ,CancelQty);
-            std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> p = std::make_pair(_orderWrapperSecondBuy,SecLegBuyOrderP);
-            OrderIdOrderWrapperBuyMapSelfTrade[_orderWrapperSecondBuy->_orderId]= p;
-            OrderIdOrderWrapperBuyMapSelfTrade.insert(std::pair<API2::COMMON::OrderId*,std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> >(_orderWrapperSecondBuy->_orderId,p));
-        }
-        OrderIdOrderWrapperBuyMap.erase(iter2);
-    }
+                if(SecLegBuyOrderP > 0)
+                {
+                API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondBuy = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_BuySide,this,AccountDetailNse);
+                // API2::COMMON::OrderWrapper *_orderWrapperSecondBuy = new API2::COMMON::OrderWrapper(_FeedInstrumentNse,_BuySide,this,AccountDetailNse);
+                _orderWrapperSecondBuy->reset();
+                OrderIdOrderWrapperBuyMapSelfTrade[_orderWrapperSecondBuy->_orderId]= _orderWrapperSecondBuy;
+                _orderWrapperSecondBuy->newOrder(risk,SecLegBuyOrderP ,CancelQty);
+                OrderIdOrderWrapperBuyMapSelfTrade.insert(std::pair<API2::COMMON::OrderId*,API2_NEW::COMMON::OrderWrapper*>(_orderWrapperSecondBuy->_orderId,_orderWrapperSecondBuy));
+
+                }
+            }
 
     auto iter3 = OrderIdOrderWrapperSellMap.find(orderId);
-    if(iter3 != OrderIdOrderWrapperSellMap.end())
-    {
-        std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE > p = iter3->second;
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondSell = p.first;
-        SecLegSellOrderP = _orderWrapperSecondSell->getOrderPrice();
-        API2::SingleOrder* order = reqQryOrder(confirmation.getClOrderId());
-        SIGNED_LONG CancelQty = 0;
 
-        if( order ){
-            CancelQty = order->getQuantity() - order->getFilledQuantity();
-        }
+        if(iter3 != OrderIdOrderWrapperSellMap.end())
+            {
+                SecLegSellOrderP = iter3->second->getOrderPrice() + TickSize;
+                API2::SingleOrder* order = reqQryOrder(confirmation.getClOrderId());
+                         SIGNED_LONG CancelQty = 0;
 
-        if(SecLegSellOrderP > 0)
-        {
-            API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondSell = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_SellSide,this,AccountDetailNse);
-            _orderWrapperSecondSell->reset();
-            _orderWrapperSecondSell->newOrder(risk,SecLegSellOrderP + TickSize ,CancelQty);
-            std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> p = std::make_pair(_orderWrapperSecondSell,SecLegSellOrderP);
-            OrderIdOrderWrapperSellMapSelfTrade[_orderWrapperSecondSell->_orderId]= p;
-            OrderIdOrderWrapperSellMapSelfTrade.insert(std::pair<API2::COMMON::OrderId*,std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> >(_orderWrapperSecondSell->_orderId,p));
-        }
-        OrderIdOrderWrapperSellMap.erase(iter3);
-    }
+                     if( order )
+                        CancelQty = order->getQuantity() - order->getFilledQuantity();
 
-    auto iter4 = OrderIdOrderWrapperBuyMapSelfTrade.find(orderId);
-    if(iter4 != OrderIdOrderWrapperBuyMapSelfTrade.end())
-    {
-        std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE > p = iter4->second;
-        SecLegBuyOrderP = p.second;
-        API2::SingleOrder* order = reqQryOrder(confirmation.getClOrderId());
-        SIGNED_LONG CancelQty = 0;
+                if(SecLegSellOrderP > 0)
+                {
+                    API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondSell = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_SellSide,this,AccountDetailNse);
+                    //API2::COMMON::OrderWrapper *_orderWrapperSecondSell = new API2::COMMON::OrderWrapper(_FeedInstrumentNse,_SellSide,this,AccountDetailNse);
+                    _orderWrapperSecondSell->reset();
+                    OrderIdOrderWrapperSellMapSelfTrade[_orderWrapperSecondSell->_orderId]= _orderWrapperSecondSell;
+                    _orderWrapperSecondSell->newOrder(risk,SecLegSellOrderP ,CancelQty);
+                    OrderIdOrderWrapperSellMapSelfTrade.insert(std::pair<API2::COMMON::OrderId*,API2_NEW::COMMON::OrderWrapper*>(_orderWrapperSecondSell->_orderId,_orderWrapperSecondSell));
 
-        if( order ){
-            CancelQty = order->getQuantity() - order->getFilledQuantity();
-        }
-
-        if(SecLegBuyOrderP > 0)
-        {
-            API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondBuy = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_BuySide,this,AccountDetailNse);
-            _orderWrapperSecondBuy->reset();
-            _orderWrapperSecondBuy->newOrder(risk,p.first->getOrderPrice() - TickSize ,CancelQty);
-            std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> p = std::make_pair(_orderWrapperSecondBuy,SecLegBuyOrderP);
-            OrderIdOrderWrapperBuyMapSelfTrade[_orderWrapperSecondBuy->_orderId]= p;
-            OrderIdOrderWrapperBuyMapSelfTrade.insert(std::pair<API2::COMMON::OrderId*,std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> >(_orderWrapperSecondBuy->_orderId,p));
-        }
-        OrderIdOrderWrapperBuyMapSelfTrade.erase(iter4);
-    }
-
-    auto iter5 = OrderIdOrderWrapperSellMapSelfTrade.find(orderId);
-    if(iter5 != OrderIdOrderWrapperSellMapSelfTrade.end())
-    {
-        std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE > p = iter5->second;
-        SecLegSellOrderP = p.second;
-        API2::SingleOrder* order = reqQryOrder(confirmation.getClOrderId());
-        SIGNED_LONG CancelQty = 0;
-
-        if( order ){
-            CancelQty = order->getQuantity() - order->getFilledQuantity();
-        }
-
-        if(SecLegSellOrderP > 0)
-        {
-            API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondSell = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_SellSide,this,AccountDetailNse);
-            _orderWrapperSecondSell->reset();
-            _orderWrapperSecondSell->newOrder(risk,p.first->getOrderPrice() + TickSize ,CancelQty);
-            std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> p = std::make_pair(_orderWrapperSecondSell,SecLegSellOrderP);
-            OrderIdOrderWrapperSellMapSelfTrade[_orderWrapperSecondSell->_orderId]= p;
-            OrderIdOrderWrapperSellMapSelfTrade.insert(std::pair<API2::COMMON::OrderId*,std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> >(_orderWrapperSecondSell->_orderId,p));
-        }
-        OrderIdOrderWrapperSellMapSelfTrade.erase(iter5);
-    }
+                }
+            }
+     //DEBUG_FLUSH(reqQryDebugLog());
 }
 
 void CurrencyBseNse::onReplaced(API2::OrderConfirmation &confirmation, API2::COMMON::OrderId *orderId)
 {
+    //DEBUG_MESSAGE(reqQryDebugLog(), "onReplaced");
+
+    //DEBUG_FLUSH(reqQryDebugLog());
+
     if(_orderWrapperBuy._orderId == orderId)
     {
-        if(!_orderWrapperBuy.processConfirmation(confirmation))
-        {
-            _orderWrapperBuy._isPendingCancel = false;
-            _orderWrapperBuy._isPendingNew = false;
-            _orderWrapperBuy._isPendingReplace = false;
-        }
-        else{
-            o_modify_cancel_order(1);
-        }
+    	DEBUG_MESSAGE(reqQryDebugLog(), "First leg buy modify order confirmation");
+    if(!_orderWrapperBuy.processConfirmation(confirmation))
+    {
+    // DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperBuy");
+    _orderWrapperBuy._isPendingCancel = false;
+    _orderWrapperBuy._isPendingNew = false;
+    _orderWrapperBuy._isPendingReplace = false;
+    }
     }
 
     if(_orderWrapperSell._orderId == orderId)
     {
-        if(!_orderWrapperSell.processConfirmation(confirmation))
-        {
-            _orderWrapperSell._isPendingCancel = false;
-            _orderWrapperSell._isPendingNew = false;
-            _orderWrapperSell._isPendingReplace = false;
-        }
-        else{
-            o_modify_cancel_order(2);
-        }
+    	DEBUG_MESSAGE(reqQryDebugLog(), "First leg sell modify order confirmation");
+    if(!_orderWrapperSell.processConfirmation(confirmation))
+    {
+    // DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSell");
+    _orderWrapperSell._isPendingCancel = false;
+    _orderWrapperSell._isPendingNew = false;
+    _orderWrapperSell._isPendingReplace = false;
     }
-
-    if(OrderIdOrderWrapperBuyMap.find(orderId) != OrderIdOrderWrapperBuyMap.end()){
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondBuy = OrderIdOrderWrapperBuyMap[orderId].first;
-        if(!_orderWrapperSecondBuy->processConfirmation(confirmation))
-        {
-            //DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSecondBuy");
-        }
-        else{
-            o_modify_cancel_sec_order(1);
-        }
     }
-
-    if(OrderIdOrderWrapperSellMap.find(orderId) != OrderIdOrderWrapperSellMap.end()){
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondSell = OrderIdOrderWrapperSellMap[orderId].first;
-        if(!_orderWrapperSecondSell->processConfirmation(confirmation))
-        {
-            //DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSecondSell");
-        }
-        else{
-            o_modify_cancel_sec_order(2);
-        }
-    }
-
-    if(OrderIdOrderWrapperBuyMapSelfTrade.find(orderId) != OrderIdOrderWrapperBuyMapSelfTrade.end()){
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondBuy = OrderIdOrderWrapperBuyMapSelfTrade[orderId].first;
-        if(!_orderWrapperSecondBuy->processConfirmation(confirmation))
-        {
-            //DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSecondBuySelfTrade");
-        }
-        else{
-            o_modify_cancel_sec_order(1);
-        }
-    }
-
-    if(OrderIdOrderWrapperSellMapSelfTrade.find(orderId) != OrderIdOrderWrapperSellMapSelfTrade.end()){
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondSell = OrderIdOrderWrapperSellMapSelfTrade[orderId].first;
-        if(!_orderWrapperSecondSell->processConfirmation(confirmation))
-        {
-            //DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSecondSellSelfTrade");
-        }
-        else{
-            o_modify_cancel_sec_order(2);
-        }
-    }
+    // DEBUG_MESSAGE(reqQryDebugLog(), "------------ onReplaced ends");
 }
 
 void CurrencyBseNse::onConfirmed(API2::OrderConfirmation &confirmation, API2::COMMON::OrderId *orderId)
 {
     if(_orderWrapperBuy._orderId == orderId)
-    {       
-        if(!_orderWrapperBuy.processConfirmation(confirmation))
-        {
-            DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperBuy");
-        }
-        else{
-            o_modify_cancel_order(1);
-        }
-
+    { 
+    	DEBUG_MESSAGE(reqQryDebugLog(), "First leg buy new order confirmation");      
+    if(!_orderWrapperBuy.processConfirmation(confirmation))
+    {
+     DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperBuy");
     }
+    }
+
 
     if(_orderWrapperSell._orderId == orderId)
     {
-        if(!_orderWrapperSell.processConfirmation(confirmation))
-        {
-            DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSell");
-        }
-        else{
-            o_modify_cancel_order(2);
-        }
+    	DEBUG_MESSAGE(reqQryDebugLog(), "First leg sell new order confirmation");
+    if(!_orderWrapperSell.processConfirmation(confirmation))
+    {
+     DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSell");
+    }
     }
 
-    if(OrderIdOrderWrapperBuyMap.find(orderId) != OrderIdOrderWrapperBuyMap.end()){
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondBuy = OrderIdOrderWrapperBuyMap[orderId].first;
-        if(!_orderWrapperSecondBuy->processConfirmation(confirmation))
-        {
-            //DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSecondBuy");
-        }
-        else{
-            o_modify_cancel_sec_order(1);
-        }
-    }
-
-    if(OrderIdOrderWrapperSellMap.find(orderId) != OrderIdOrderWrapperSellMap.end()){
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondSell = OrderIdOrderWrapperSellMap[orderId].first;
-        if(!_orderWrapperSecondSell->processConfirmation(confirmation))
-        {
-            //DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSecondSell");
-        }
-        else{
-            o_modify_cancel_sec_order(2);
-        }
-    }
-
-    if(OrderIdOrderWrapperBuyMapSelfTrade.find(orderId) != OrderIdOrderWrapperBuyMapSelfTrade.end()){
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondBuy = OrderIdOrderWrapperBuyMapSelfTrade[orderId].first;
-        if(!_orderWrapperSecondBuy->processConfirmation(confirmation))
-        {
-            //DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSecondBuySelfTrade");
-        }
-        else{
-            o_modify_cancel_sec_order(1);
-        }
-    }
-
-    if(OrderIdOrderWrapperSellMapSelfTrade.find(orderId) != OrderIdOrderWrapperSellMapSelfTrade.end()){
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondSell = OrderIdOrderWrapperSellMapSelfTrade[orderId].first;
-        if(!_orderWrapperSecondSell->processConfirmation(confirmation))
-        {
-            //DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSecondSellSelfTrade");
-        }
-        else{
-            o_modify_cancel_sec_order(2);
-        }
-    }
+     // DEBUG_MESSAGE(reqQryDebugLog(), "------------ onConfirmed ends");
 }
 
 void CurrencyBseNse::onFilled(API2::OrderConfirmation &confirmation, API2::COMMON::OrderId *orderId)
 {
+    DEBUG_MESSAGE(reqQryDebugLog(), "onFilled Event");
+    // DEBUG_FLUSH(reqQryDebugLog());
     API2::DATA_TYPES::RiskStatus risk;
 
     if(API2::DATA_TYPES::SYMBOL_ID(_BseTradeInstr->getSymbolId()) == confirmation.getSymbolId())
     {
-        TrdQty = (confirmation.getLastFillQuantity()/BoardLotSizeBse)*BoardLotSizeNse;
-        TrdPrice = confirmation.getLastFillPrice();
+    TrdQty = (confirmation.getLastFillQuantity()/BoardLotSizeBse)*BoardLotSizeNse;
+    TrdPrice = confirmation.getLastFillPrice();
 
-        if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_BUY)
-        {
-            API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondSell = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_SellSide,this,AccountDetailNse);
-            _orderWrapperSecondSell->reset();
-            std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> p = std::make_pair(_orderWrapperSecondSell,0);
-            OrderIdOrderWrapperSellMap[_orderWrapperSecondSell->_orderId]= p;
-            _orderWrapperSecondSell->newOrder(risk,TrdPrice + _BuyDiff ,TrdQty);
-            OrderIdOrderWrapperSellMap.insert(std::pair<API2::COMMON::OrderId*,std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> >(_orderWrapperSecondSell->_orderId,p));
-            FirstLegBuyTradePrice = TrdPrice;
-            FirstLegBuyTradedQty += confirmation.getLastFillQuantity();
-        }
+    //DEBUG_VARSHOW(reqQryDebugLog(), "TrdQty @: ",TrdQty);
+    //DEBUG_VARSHOW(reqQryDebugLog(), "TrdPrice @: ",TrdPrice);
 
-        if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_SELL)
-        {
-            API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondBuy = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_BuySide,this,AccountDetailNse);
-            _orderWrapperSecondBuy->reset();
-            std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> p = std::make_pair(_orderWrapperSecondBuy,0);
-            OrderIdOrderWrapperBuyMap[_orderWrapperSecondBuy->_orderId]= p;
-            _orderWrapperSecondBuy->newOrder(risk,TrdPrice - _SellDiff ,TrdQty);
-            OrderIdOrderWrapperBuyMap.insert(std::pair<API2::COMMON::OrderId*,std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> >(_orderWrapperSecondBuy->_orderId,p));
-            FirstLegSellTradePrice = TrdPrice;
-            FirstLegSellTradedQty += confirmation.getLastFillQuantity();
-        }
+    if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_BUY)
+    {
+    //DEBUG_MESSAGE(reqQryDebugLog(), "--------------- Trade Event Starts for 1st Leg BUY  ----------------");
+
+     API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondSell = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_SellSide,this,AccountDetailNse);
+    _orderWrapperSecondSell->reset();
+    OrderIdOrderWrapperSellMap[_orderWrapperSecondSell->_orderId]= _orderWrapperSecondSell;
+    _orderWrapperSecondSell->newOrder(risk,TrdPrice + _BuyDiff ,TrdQty);
+    DEBUG_VARSHOW(reqQryDebugLog(), " First leg buy traded at : ",TrdPrice);
+    DEBUG_VARSHOW(reqQryDebugLog(), " First leg buy traded qty : ",confirmation.getLastFillQuantity()/BoardLotSizeBse);       
+    DEBUG_VARSHOW(reqQryDebugLog(), " Second leg sell order placed at : ",TrdPrice + _BuyDiff);
+    OrderIdOrderWrapperSellMap.insert(std::pair<API2::COMMON::OrderId*,API2_NEW::COMMON::OrderWrapper*>(_orderWrapperSecondSell->_orderId,_orderWrapperSecondSell));
+    FirstLegBuyTradePrice = TrdPrice;
+    FirstLegBuyTradedQty +=  confirmation.getLastFillQuantity(); 
+    }
+
+    if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_SELL)
+    {
+       //DEBUG_MESSAGE(reqQryDebugLog(), "--------------- Trade Event Starts for 1st Leg Sell ----------------");
+
+        API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondBuy = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_BuySide,this,AccountDetailNse);       
+        _orderWrapperSecondBuy->reset();
+        OrderIdOrderWrapperBuyMap[_orderWrapperSecondBuy->_orderId]= _orderWrapperSecondBuy;
+        _orderWrapperSecondBuy->newOrder(risk,TrdPrice - _SellDiff ,TrdQty);
+        DEBUG_VARSHOW(reqQryDebugLog(), " First leg sell traded at : ",TrdPrice);
+        DEBUG_VARSHOW(reqQryDebugLog(), " First leg sell traded qty : ",confirmation.getLastFillQuantity()/BoardLotSizeBse);       
+        DEBUG_VARSHOW(reqQryDebugLog(), " Second leg buy order placed at : ",TrdPrice - _SellDiff);
+        OrderIdOrderWrapperBuyMap.insert(std::pair<API2::COMMON::OrderId*,API2_NEW::COMMON::OrderWrapper*>(_orderWrapperSecondBuy->_orderId,_orderWrapperSecondBuy));
+        FirstLegSellTradePrice = TrdPrice;
+        FirstLegSellTradedQty +=  confirmation.getLastFillQuantity(); 
+    }
 	}
+
 
     if(API2::DATA_TYPES::SYMBOL_ID(_FeedInstrumentNse->getSymbolId()) == confirmation.getSymbolId())
 	{
-        TrdPrice = confirmation.getLastFillPrice();
-        TrdQty = confirmation.getLastFillQuantity();
 
-        if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_BUY)
+    TrdPrice = confirmation.getLastFillPrice();
+    TrdQty = confirmation.getLastFillQuantity();
+
+	if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_BUY)
+    {
+        //DEBUG_MESSAGE(reqQryDebugLog(), "--------------- Trade Event Starts for 2nd Leg Nse Buy ----------------");
+
+        First_Sell_Traded_Price = FirstLegSellTradePrice;
+        Second_Buy_Traded_Price = TrdPrice;
+        dTradeDiff = First_Sell_Traded_Price - Second_Buy_Traded_Price;
+
+        if(dTradeDiff < (_SellDiff - _Tolerance))
         {
-            First_Sell_Traded_Price = FirstLegSellTradePrice;
-            Second_Buy_Traded_Price = TrdPrice;
-            dTradeDiff = First_Sell_Traded_Price - Second_Buy_Traded_Price;
+          //DEBUG_VARSHOW(reqQryDebugLog(), "_IsBidding  : ",_IsBidding);
+         _IsBidding = "No";
+         Update_Text(1);
+          //DEBUG_VARSHOW(reqQryDebugLog(), "_IsBidding  : ",_IsBidding);
+        }       
 
-            if(dTradeDiff < (_SellDiff - _Tolerance))
-            {
-                 _IsBidding = "No";
-                 Update_Text(1);
-            }
+        First_Sell_Pending_Qty = _orderWrapperSell._instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
+        First_leg_Sell_Position = _BseTradeInstr -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
+        Second_leg_Buy_Position = _FeedInstrumentNse -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeNse;
+        //DEBUG_VARSHOW(reqQryDebugLog(), "First_leg_Sell_Position  : ",First_leg_Sell_Position);
+        //DEBUG_VARSHOW(reqQryDebugLog(), "Second_leg_Buy_Position  : ",Second_leg_Buy_Position);
+        //DEBUG_VARSHOW(reqQryDebugLog(), "_TotalSellTraded  : ",_TotalSellTraded);
 
-            First_leg_Sell_Position = _BseTradeInstr -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
-            Second_leg_Buy_Position = _FeedInstrumentNse -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeNse;
-            First_Sell_Pending_Qty = _orderWrapperSell._instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
+            // Update_Sell_Position(First_leg_Sell_Position + _TotalSellTraded);
+        Update_Sell_Position(First_leg_Sell_Position);
 
-            Update_Sell_Position(First_leg_Sell_Position);
-
-            if(First_leg_Sell_Position == Second_leg_Buy_Position)
-            {
-                OrderIdOrderWrapperBuyMap.clear();
-                OrderIdOrderWrapperBuyMapSelfTrade.clear();
-                o_modify_cancel_order(2);
-            }
-
-            if(First_Sell_Pending_Qty <= 0)
-            {
-                _orderWrapperSell._isPendingCancel = false;
-                _orderWrapperSell._isPendingNew = false;
-                _orderWrapperSell._isPendingReplace = false;
-                _orderWrapperSell.reset();
-                o_place_order(2);
-
-            }
-
-            FlushCounter++;
-            if(FlushCounter == 5){
-                DEBUG_FLUSH(reqQryDebugLog());
-                FlushCounter = 0;
-            }
+        if(First_leg_Sell_Position == Second_leg_Buy_Position)
+        {
+           OrderIdOrderWrapperBuyMap.clear();
+           OrderIdOrderWrapperBuyMapSelfTrade.clear();
+            //DEBUG_MESSAGE(reqQryDebugLog(), "OrderIdOrderWrapperBuyMap clear : ");
+            // DEBUG_FLUSH(reqQryDebugLog());
         }
 
-        if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_SELL)
-        {
-            First_Buy_Traded_Price = FirstLegBuyTradePrice ;
-            Second_Sell_Traded_Price = TrdPrice;
-            dTradeDiff = Second_Sell_Traded_Price - First_Buy_Traded_Price;
-
-            if(dTradeDiff < (_BuyDiff - _Tolerance))
-            {
-                 _IsBidding = "No";
-                 Update_Text(1);
-            }
-
-            First_leg_Buy_Position = _BseTradeInstr -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
-            Second_leg_Sell_Position = _FeedInstrumentNse -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeNse;
-
-            First_Buy_Pending_Qty = _orderWrapperBuy._instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
-            Update_Buy_Position(First_leg_Buy_Position);
-
-            if(First_leg_Buy_Position == Second_leg_Sell_Position)
-            {
-                OrderIdOrderWrapperSellMap.clear();
-                OrderIdOrderWrapperSellMapSelfTrade.clear();
-                o_modify_cancel_order(1);
-            }
-
-            if(First_Buy_Pending_Qty <= 0){
-                _orderWrapperBuy._isPendingCancel = false;
-                _orderWrapperBuy._isPendingNew = false;
-                _orderWrapperBuy._isPendingReplace = false;
-                _orderWrapperBuy.reset();
-                o_place_order(1);
-            }
-
-            FlushCounter++;
-            if(FlushCounter == 5){
-                DEBUG_FLUSH(reqQryDebugLog());
-                FlushCounter = 0;
-            }
+        if(First_Sell_Pending_Qty <= 0){
+            _orderWrapperSell._isPendingCancel = false;
+           _orderWrapperSell._isPendingNew = false;
+           _orderWrapperSell._isPendingReplace = false;
+           _orderWrapperSell.reset();
         }
+
+        // new changes
+        onMarketDataEvent(confirmation.getSymbolId());
+        DEBUG_FLUSH(reqQryDebugLog());
     }
+
+	if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_SELL)
+    {
+        //DEBUG_MESSAGE(reqQryDebugLog(), "--------------- Trade Event Starts for 2nd Leg Nse Sell ----------------");
+
+        First_Buy_Traded_Price = FirstLegBuyTradePrice ;
+        Second_Sell_Traded_Price = TrdPrice;
+        dTradeDiff = Second_Sell_Traded_Price - First_Buy_Traded_Price;
+
+        if(dTradeDiff < (_BuyDiff - _Tolerance))
+        {
+         //DEBUG_VARSHOW(reqQryDebugLog(), "_IsBidding  : ",_IsBidding);
+        _IsBidding = "No";
+         Update_Text(1);
+         //DEBUG_VARSHOW(reqQryDebugLog(), "_IsBidding  : ",_IsBidding);
+        }
+
+        First_Buy_Pending_Qty = _orderWrapperBuy._instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
+        First_leg_Buy_Position = _BseTradeInstr -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
+        Second_leg_Sell_Position = _FeedInstrumentNse -> getPosition()-> getTradedQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeNse;
+
+        //DEBUG_VARSHOW(reqQryDebugLog(), "First_leg_Buy_Position  : ",First_leg_Buy_Position);
+        //DEBUG_VARSHOW(reqQryDebugLog(), "Second_leg_Sell_Position  : ",Second_leg_Sell_Position);
+        //DEBUG_VARSHOW(reqQryDebugLog(), "_TotalBuyTraded  : ",_TotalBuyTraded);        
+        Update_Buy_Position(First_leg_Buy_Position);
+
+        if(First_leg_Buy_Position == Second_leg_Sell_Position)
+        {
+            OrderIdOrderWrapperSellMap.clear();
+            OrderIdOrderWrapperSellMapSelfTrade.clear();
+            //DEBUG_MESSAGE(reqQryDebugLog(), "OrderIdOrderWrapperSellMap clear : ");            
+        }
+
+        if(First_Buy_Pending_Qty <= 0){
+            _orderWrapperBuy._isPendingCancel = false;
+            _orderWrapperBuy._isPendingNew = false;
+            _orderWrapperBuy._isPendingReplace = false;
+            _orderWrapperBuy.reset();
+        }
+
+        // new changes
+        onMarketDataEvent(confirmation.getSymbolId());
+        DEBUG_FLUSH(reqQryDebugLog());
+    }
+    }
+    // DEBUG_MESSAGE(reqQryDebugLog(), "--------------- Trade Event Ends ----------------");
 }
 
 void CurrencyBseNse::onPartialFill(API2::OrderConfirmation &confirmation, API2::COMMON::OrderId *orderId)
 {
+    DEBUG_MESSAGE(reqQryDebugLog(), "onPartialFill Event");
+    //DEBUG_FLUSH(reqQryDebugLog());
+
     API2::DATA_TYPES::RiskStatus risk;
 
     if(API2::DATA_TYPES::SYMBOL_ID(_BseTradeInstr->getSymbolId()) == confirmation.getSymbolId())
     {
-        TrdQty = (confirmation.getLastFillQuantity()/BoardLotSizeBse)*BoardLotSizeNse;
-        TrdPrice = confirmation.getLastFillPrice();
+    TrdQty = (confirmation.getLastFillQuantity()/BoardLotSizeBse)*BoardLotSizeNse;
+    TrdPrice = confirmation.getLastFillPrice();
 
-        if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_BUY)
-        {
-            API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondSell = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_SellSide,this,AccountDetailNse);
-            _orderWrapperSecondSell->reset();
-            std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> p = std::make_pair(_orderWrapperSecondSell,0);
-            OrderIdOrderWrapperSellMap[_orderWrapperSecondSell->_orderId]= p;
-            _orderWrapperSecondSell->newOrder(risk,TrdPrice + _BuyDiff ,TrdQty);
-            OrderIdOrderWrapperSellMap.insert(std::pair<API2::COMMON::OrderId*,std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> >(_orderWrapperSecondSell->_orderId,p));
-            FirstLegBuyTradePrice = TrdPrice;
-            FirstLegBuyTradedQty += confirmation.getLastFillQuantity();
-            o_modify_cancel_order(1);
-        }
+    if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_BUY)
+    {
+        //DEBUG_MESSAGE(reqQryDebugLog(), "--------------- Trade Event Starts for 1st Leg BUY  ----------------");
+        API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondSell = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_SellSide,this,AccountDetailNse);
+        _orderWrapperSecondSell->reset();
+        OrderIdOrderWrapperSellMap[_orderWrapperSecondSell->_orderId]= _orderWrapperSecondSell;
+        _orderWrapperSecondSell->newOrder(risk,TrdPrice + _BuyDiff ,TrdQty); 
+        DEBUG_VARSHOW(reqQryDebugLog(), " First leg buy traded at : ",TrdPrice);
+        DEBUG_VARSHOW(reqQryDebugLog(), " First leg buy traded qty : ",confirmation.getLastFillQuantity()/BoardLotSizeBse);       
+        DEBUG_VARSHOW(reqQryDebugLog(), " Second leg sell order placed at : ",TrdPrice + _BuyDiff);
+        OrderIdOrderWrapperSellMap.insert(std::pair<API2::COMMON::OrderId*,API2_NEW::COMMON::OrderWrapper*>(_orderWrapperSecondSell->_orderId,_orderWrapperSecondSell));
+        FirstLegBuyTradePrice = TrdPrice;
+        FirstLegBuyTradedQty  +=  confirmation.getLastFillQuantity();
+    }
 
-        if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_SELL)
-        {
-            API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondBuy = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_BuySide,this,AccountDetailNse);
-            _orderWrapperSecondBuy->reset();
-            std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> p = std::make_pair(_orderWrapperSecondBuy,0);
-            OrderIdOrderWrapperBuyMap[_orderWrapperSecondBuy->_orderId]= p;
-            _orderWrapperSecondBuy->newOrder(risk,TrdPrice - _SellDiff ,TrdQty);
-            OrderIdOrderWrapperBuyMap.insert(std::pair<API2::COMMON::OrderId*,std::pair<API2_NEW::COMMON::OrderWrapper*, API2::DATA_TYPES::PRICE> >(_orderWrapperSecondBuy->_orderId,p));
-            FirstLegSellTradePrice = TrdPrice;
-            FirstLegSellTradedQty += confirmation.getLastFillQuantity();
-            o_modify_cancel_order(2);
-        }
+    if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_SELL)
+    {
+        //DEBUG_MESSAGE(reqQryDebugLog(), "--------------- Trade Event Starts for 1st Leg Sell ----------------");
+        API2_NEW::COMMON::OrderWrapper *_orderWrapperSecondBuy = new API2_NEW::COMMON::OrderWrapper(_FeedInstrumentNse,_BuySide,this,AccountDetailNse);
+        _orderWrapperSecondBuy->reset();
+        OrderIdOrderWrapperBuyMap[_orderWrapperSecondBuy->_orderId]= _orderWrapperSecondBuy;
+        _orderWrapperSecondBuy->newOrder(risk,TrdPrice - _SellDiff ,TrdQty);
+        DEBUG_VARSHOW(reqQryDebugLog(), " First leg sell traded at : ",TrdPrice);
+        DEBUG_VARSHOW(reqQryDebugLog(), " First leg sell traded qty : ",confirmation.getLastFillQuantity()/BoardLotSizeBse);       
+        DEBUG_VARSHOW(reqQryDebugLog(), " Second leg buy order placed at : ",TrdPrice - _SellDiff);
+        OrderIdOrderWrapperBuyMap.insert(std::pair<API2::COMMON::OrderId*,API2_NEW::COMMON::OrderWrapper*>(_orderWrapperSecondBuy->_orderId,_orderWrapperSecondBuy));
+        FirstLegSellTradePrice = TrdPrice;   
+        FirstLegSellTradedQty +=  confirmation.getLastFillQuantity();  
+    }
     }
 
     if(API2::DATA_TYPES::SYMBOL_ID(_FeedInstrumentNse->getSymbolId()) == confirmation.getSymbolId())
     {
-        TrdPrice = confirmation.getLastFillPrice();
-        TrdQty = confirmation.getLastFillQuantity();
+         TrdPrice = confirmation.getLastFillPrice();
+         TrdQty = confirmation.getLastFillQuantity();
 
-        if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_BUY)
-        {
-            First_Sell_Traded_Price = FirstLegSellTradePrice;
-            Second_Buy_Traded_Price = TrdPrice;
-            dTradeDiff = First_Sell_Traded_Price - Second_Buy_Traded_Price;
+    if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_BUY)
+    {
+        //DEBUG_MESSAGE(reqQryDebugLog(), "--------------- Trade Event Starts for 2nd Leg Nse Buy ----------------");
+        First_Sell_Traded_Price = FirstLegSellTradePrice;
+        Second_Buy_Traded_Price = TrdPrice;
+        dTradeDiff = First_Sell_Traded_Price - Second_Buy_Traded_Price;
 
-            if(dTradeDiff < (_SellDiff - _Tolerance))
-            {
+                if(dTradeDiff < (_SellDiff - _Tolerance))
+                {
+                 // DEBUG_VARSHOW(reqQryDebugLog(), "_IsBidding  : ",_IsBidding);
                 _IsBidding = "No";
-                Update_Text(1);
-            }
-        }
+                  Update_Text(1);
+                 // DEBUG_VARSHOW(reqQryDebugLog(), "_IsBidding  : ",_IsBidding);
+                }       
 
-        if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_SELL)
-        {
-            First_Buy_Traded_Price = FirstLegBuyTradePrice;
-            Second_Sell_Traded_Price = TrdPrice;
-            dTradeDiff = Second_Sell_Traded_Price - First_Buy_Traded_Price;
-
-            if(dTradeDiff < (_BuyDiff - _Tolerance))
-            {
-                _IsBidding = "No";
-                Update_Text(1);
-            }
-        }
+    // DEBUG_MESSAGE(reqQryDebugLog(), "Second leg buy wrapper reset : ");
+     // DEBUG_FLUSH(reqQryDebugLog());
     }
+
+    if(confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_SELL)
+    {
+        //DEBUG_MESSAGE(reqQryDebugLog(), "--------------- Trade Event Starts for 2nd Leg Nse Sell ----------------");
+
+        First_Buy_Traded_Price = FirstLegBuyTradePrice;
+        Second_Sell_Traded_Price = TrdPrice;
+        dTradeDiff = Second_Sell_Traded_Price - First_Buy_Traded_Price;
+
+                if(dTradeDiff < (_BuyDiff - _Tolerance))
+                {
+                 // DEBUG_VARSHOW(reqQryDebugLog(), "_IsBidding  : ",_IsBidding);
+                _IsBidding = "No";
+                  Update_Text(1);
+                 // DEBUG_VARSHOW(reqQryDebugLog(), "_IsBidding  : ",_IsBidding);
+                }      
+
+        // DEBUG_MESSAGE(reqQryDebugLog(), "Second leg Sell wrapper reset : ");
+        // DEBUG_FLUSH(reqQryDebugLog());
+    }
+    }
+    // DEBUG_MESSAGE(reqQryDebugLog(), "--------------- onPartialFill Ends ----------------");
 }
+
+
+/*
+void CurrencyBseNse::onProcessOrderConfirmation(API2::OrderConfirmation &confirmation)
+{	
+
+    DEBUG_MESSAGE(reqQryDebugLog(), "--------------- onProcessOrderConfirmation Starts ----------------");
+    DEBUG_FLUSH(reqQryDebugLog());
+    DEBUG_MESSAGE(reqQryDebugLog(),"............................................");
+    DEBUG_VARSHOW(reqQryDebugLog(), "getTraderId();: ",confirmation.getTraderId());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getStrategyId(): ",confirmation.getStrategyId());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getSymbolId(): ",confirmation.getSymbolId());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getLimitPrice(): ",confirmation.getLimitPrice());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getOrderMode(): ",confirmation.getOrderMode());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getOrderPrice(): ",confirmation.getOrderPrice());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getOrderQuantity(): ",confirmation.getOrderQuantity());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getPendingQuantity(): ",confirmation.getOrderQuantity() - confirmation.getLastFillQuantity());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getLastFillPrice(): ",confirmation.getLastFillPrice());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getIOCCanceledQuantity(): ",confirmation.getIOCCanceledQuantity());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getLastFillQuantity(): ",confirmation.getLastFillQuantity());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getTradeId(): ",confirmation.getTradeId());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getOrderStatus(): ",confirmation.getOrderStatus());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getClOrderId(): ",confirmation.getClOrderId());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getExchangeOrderId(): ",confirmation.getExchangeOrderId());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getExchangeEntryTime(): ",confirmation.getExchangeEntryTime());
+    DEBUG_VARSHOW(reqQryDebugLog(), "getExchangeModifyTime(): ",confirmation.getExchangeModifyTime());
+    DEBUG_FLUSH(reqQryDebugLog());
+
+    API2::DATA_TYPES::RiskStatus risk;
+    if(API2::DATA_TYPES::SYMBOL_ID(_BseTradeInstr->getSymbolId()) == confirmation.getSymbolId()
+            && confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_BUY
+            && confirmation.getOrderStatus() == 1)
+    {
+            API2::COMMON::MktData *mktDataNse = reqQryMarketData(_FeedInstrumentNse->getSymbolId());
+            BuyPriceNse = mktDataNse->getBidPrice(0);
+            if(_Depth == 0)
+            BuyQuotePrice = BuyPriceNse - _BuyDiff;
+
+            if(_Depth == 1)
+            BuyQuotePrice = BuyPriceNse1 - _BuyDiff;
+
+            OrderPrice = confirmation.getOrderPrice();
+                if(OrderPrice > 0 && BuyQuotePrice > 0 && BuyPriceNse > 0 && OrderPrice > BuyQuotePrice)
+                {
+                    _orderWrapperBuy.cancelOrder(risk);
+                     DEBUG_MESSAGE(reqQryDebugLog(), "--------------- Buy Cancelled order ----------------");
+                     //DEBUG_FLUSH(reqQryDebugLog());
+                }
+    }
+
+
+    if(API2::DATA_TYPES::SYMBOL_ID(_BseTradeInstr->getSymbolId()) == confirmation.getSymbolId()
+            && confirmation.getOrderMode() == API2::CONSTANTS::CMD_OrderMode_SELL
+            && confirmation.getOrderStatus() == 1)
+    {
+        API2::COMMON::MktData *mktDataNse = reqQryMarketData(_FeedInstrumentNse->getSymbolId());
+        SellPriceNse = mktDataNse->getAskPrice(0);
+        if(_Depth == 0)
+        SellQuotePrice = SellPriceNse + _SellDiff;
+
+        if(_Depth == 1)
+        SellQuotePrice = SellPriceNse1 + _SellDiff;
+
+        OrderPrice = confirmation.getOrderPrice();
+
+         if(OrderPrice > 0 && SellQuotePrice > 0 && SellPriceNse > 0 && OrderPrice < SellQuotePrice)
+             {
+                _orderWrapperSell.cancelOrder(risk);
+                 DEBUG_MESSAGE(reqQryDebugLog(), "--------------- Sell Cancelled order ----------------");
+                 //DEBUG_FLUSH(reqQryDebugLog());
+             }
+    }
+
+    // DEBUG_MESSAGE(reqQryDebugLog(), "--------------- onProcessOrderConfirmation Ends ----------------");
+    // DEBUG_FLUSH(reqQryDebugLog());	
+}
+*/
 
 void CurrencyBseNse::onCancelRejected(API2::OrderConfirmation &confirmation, API2::COMMON::OrderId *orderId)
 {
+
+    //DEBUG_MESSAGE(reqQryDebugLog(), "onCancelRejected");
+
+    //DEBUG_FLUSH(reqQryDebugLog());
+
     if( _orderWrapperBuy._orderId == orderId)
     {
         _orderWrapperBuy._isPendingCancel = false;
@@ -1521,106 +1501,56 @@ void CurrencyBseNse::onCancelRejected(API2::OrderConfirmation &confirmation, API
     }
 
     if( _orderWrapperSell._orderId == orderId)
-    { 
-        _orderWrapperSell._isPendingCancel = false;
-        _orderWrapperSell._isPendingNew = false;
-        _orderWrapperSell._isPendingReplace = false;
-        _orderWrapperSell.reset();
+    {
+       _orderWrapperSell._isPendingCancel = false;
+       _orderWrapperSell._isPendingNew = false;
+       _orderWrapperSell._isPendingReplace = false;
+       _orderWrapperSell.reset();
     }
+     // DEBUG_MESSAGE(reqQryDebugLog(), "------------ onCancelRejected ends");
 }
 
 void CurrencyBseNse::onReplaceRejected(API2::OrderConfirmation &confirmation, API2::COMMON::OrderId *orderId)
 {
-    API2::DATA_TYPES::RiskStatus risk;
+    //DEBUG_MESSAGE(reqQryDebugLog(), "onReplaceRejected");
+    //DEBUG_FLUSH(reqQryDebugLog());
+
+	API2::DATA_TYPES::RiskStatus risk;
     if( _orderWrapperBuy._orderId == orderId)
     {
         _orderWrapperBuy._isPendingCancel = false;
         _orderWrapperBuy._isPendingNew = false;
         _orderWrapperBuy._isPendingReplace = false;
-        _orderWrapperBuy.reset(); 
-        First_Buy_Pending_Qty = _orderWrapperBuy._instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
-        if(First_Buy_Pending_Qty > 0){
-            o_modify_cancel_order(1);
-        }
-        else{
-            _orderWrapperBuy.cancelOrder(risk);
-        }
+        _orderWrapperBuy.reset();
+        _orderWrapperBuy.cancelOrder(risk);
     }
 
     if( _orderWrapperSell._orderId == orderId)
-    {     
-        _orderWrapperSell._isPendingCancel = false;
-        _orderWrapperSell._isPendingNew = false;
-        _orderWrapperSell._isPendingReplace = false;
-        _orderWrapperSell.reset();
-        First_Sell_Pending_Qty = _orderWrapperSell._instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
-        if(First_Sell_Pending_Qty > 0){
-            o_modify_cancel_order(2);
-        }
-        else{
-            _orderWrapperSell.cancelOrder(risk);
-        }
-    }
+    {
+       _orderWrapperSell._isPendingCancel = false;
+       _orderWrapperSell._isPendingNew = false;
+       _orderWrapperSell._isPendingReplace = false;
+       _orderWrapperSell.reset();      
+       _orderWrapperSell.cancelOrder(risk);
+    }   
 
-    if(OrderIdOrderWrapperBuyMap.find(orderId) != OrderIdOrderWrapperBuyMap.end()){
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondBuy = OrderIdOrderWrapperBuyMap[orderId].first;
-        if(!_orderWrapperSecondBuy->processConfirmation(confirmation))
-        {
-            //DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSecondBuy");
-        }
-        else{
-            Second_Buy_Pending_Qty = _orderWrapperSecondBuy->_instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
-            if(Second_Buy_Pending_Qty > 0){
-                o_modify_cancel_sec_order(1);
-            }
-        }
-    }
-
-    if(OrderIdOrderWrapperSellMap.find(orderId) != OrderIdOrderWrapperSellMap.end()){
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondSell = OrderIdOrderWrapperSellMap[orderId].first;
-        if(!_orderWrapperSecondSell->processConfirmation(confirmation))
-        {
-            //DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSecondSell");
-        }
-        else{
-            Second_Sell_Pending_Qty = _orderWrapperSecondSell->_instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
-            if(Second_Buy_Pending_Qty > 0){
-                o_modify_cancel_sec_order(2);
-            }
-        }
-    }
-
-    if(OrderIdOrderWrapperBuyMapSelfTrade.find(orderId) != OrderIdOrderWrapperBuyMapSelfTrade.end()){
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondBuy = OrderIdOrderWrapperBuyMapSelfTrade[orderId].first;
-        if(!_orderWrapperSecondBuy->processConfirmation(confirmation))
-        {
-            //DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSecondBuySelfTrade");
-        }
-        else{
-            Second_Buy_Pending_Qty = _orderWrapperSecondBuy->_instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_BUY)/BoardLotSizeBse;
-            if(Second_Buy_Pending_Qty > 0){
-                o_modify_cancel_sec_order(1);
-            }
-        }
-    }
-
-    if(OrderIdOrderWrapperSellMapSelfTrade.find(orderId) != OrderIdOrderWrapperSellMapSelfTrade.end()){
-        API2_NEW::COMMON::OrderWrapper* _orderWrapperSecondSell = OrderIdOrderWrapperSellMapSelfTrade[orderId].first;
-        if(!_orderWrapperSecondSell->processConfirmation(confirmation))
-        {
-            //DEBUG_MESSAGE(reqQryDebugLog(),"Order Wrapper Process Confirmation Failed _orderWrapperSecondSellSelfTrade");
-        }
-        else{
-            Second_Sell_Pending_Qty = _orderWrapperSecondSell->_instrument->getPosition()->getPendingQty(API2::CONSTANTS::CMD_OrderMode_SELL)/BoardLotSizeBse;
-            if(Second_Buy_Pending_Qty > 0){
-                o_modify_cancel_sec_order(2);
-            }
-        }
-    }
+     //DEBUG_MESSAGE(reqQryDebugLog(), "onReplaceRejected ends");
 }
+
+/*void CurrencyBseNse::onTimerEvent()
+{
+    //DEBUG_MESSAGE(reqQryDebugLog(), "------------Inside onTimerEvent ");
+   // DEBUG_FLUSH(reqQryDebugLog());
+   // reqTimerEvent(5000000);
+    //DEBUG_MESSAGE(reqQryDebugLog(), "------------Inside onTimerEvent out ");
+}*/
 
 void CurrencyBseNse::onNewReject(API2::OrderConfirmation &confirmation, API2::COMMON::OrderId *orderId)
 {
+    // DEBUG_MESSAGE(reqQryDebugLog(), "------------Inside onNewReject");    
+    // DEBUG_VARSHOW(reqQryDebugLog(), "confirmation.getErrorCode()  : ",confirmation.getErrorCode());
+    // DEBUG_VARSHOW(reqQryDebugLog(), "confirmation.getOrderStatus(  : ",confirmation.getOrderStatus());   
+    // DEBUG_MESSAGE(reqQryDebugLog(),"Fresh Order Rejection...Strategy Terminate......");
     DEBUG_FLUSH(reqQryDebugLog());
     reqTerminateStrategy();
 }
